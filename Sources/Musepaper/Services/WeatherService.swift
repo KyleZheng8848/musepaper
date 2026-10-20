@@ -31,17 +31,17 @@ struct WeatherSnapshot: Equatable, Sendable {
 
     static func condition(for code: Int) -> String {
         switch code {
-        case 0: return "晴"
-        case 1, 2: return "少云"
-        case 3: return "多云"
-        case 45, 48: return "雾"
-        case 51, 53, 55, 56, 57: return "毛毛雨"
-        case 61, 63, 65, 66, 67: return "雨"
-        case 71, 73, 75, 77: return "雪"
-        case 80, 81, 82: return "阵雨"
-        case 85, 86: return "阵雪"
-        case 95, 96, 99: return "雷雨"
-        default: return "天气"
+        case 0: return L10n.tr("晴")
+        case 1, 2: return L10n.tr("少云")
+        case 3: return L10n.tr("多云")
+        case 45, 48: return L10n.tr("雾")
+        case 51, 53, 55, 56, 57: return L10n.tr("毛毛雨")
+        case 61, 63, 65, 66, 67: return L10n.tr("雨")
+        case 71, 73, 75, 77: return L10n.tr("雪")
+        case 80, 81, 82: return L10n.tr("阵雨")
+        case 85, 86: return L10n.tr("阵雪")
+        case 95, 96, 99: return L10n.tr("雷雨")
+        default: return L10n.tr("天气")
         }
     }
 
@@ -69,12 +69,12 @@ enum WeatherServiceError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .locationDenied:
-            return "定位被拒绝。可在设置里填写城市，例如「杭州」"
+            return L10n.tr("定位被拒绝。可在设置里填写城市，例如「杭州」")
         case .locationUnavailable:
-            return "暂时拿不到位置。可在设置里填写城市，例如「杭州」"
-        case .badResponse: return "天气数据无法解析"
+            return L10n.tr("暂时拿不到位置。可在设置里填写城市，例如「杭州」")
+        case .badResponse: return L10n.tr("天气数据无法解析")
         case .network(let message): return message
-        case .cityNotFound(let city): return "找不到城市「\(city)」，换个写法再试（如杭州 / Hangzhou）"
+        case .cityNotFound(let city): return L10n.tr("找不到城市「\(city)」，换个写法再试（如杭州 / Hangzhou）")
         }
     }
 }
@@ -196,7 +196,7 @@ final class WeatherService: NSObject {
         guard let url = components.url else { throw WeatherServiceError.badResponse }
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw WeatherServiceError.network("城市查询失败")
+            throw WeatherServiceError.network(L10n.tr("城市查询失败"))
         }
         guard
             let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -233,7 +233,7 @@ final class WeatherService: NSObject {
         let url = URL(string: "https://whois.pconline.com.cn/ipJson.jsp?json=true")!
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw WeatherServiceError.network("国内 IP 定位不可用")
+            throw WeatherServiceError.network(L10n.tr("国内 IP 定位不可用"))
         }
         guard let text = Self.decodePossiblyGBK(data),
               let jsonData = text.data(using: .utf8),
@@ -382,7 +382,7 @@ final class WeatherService: NSObject {
             throw WeatherServiceError.network(error.localizedDescription)
         }
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw WeatherServiceError.network("天气服务暂不可用")
+            throw WeatherServiceError.network(L10n.tr("天气服务暂不可用"))
         }
         guard
             let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],

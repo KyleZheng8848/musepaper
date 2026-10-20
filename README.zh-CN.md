@@ -163,3 +163,15 @@ Provider 仿真使用模拟网络，不产生模型费用；验证本机凭据�
 ## 许可证
 
 版权所有 © 2026 SofunAI 工作室及 Musepaper 贡献者。源码采用 [MIT License](LICENSE)。第三方模型服务、素材、参考图片及生成内容的使用权取决于相应条款与权利人的授权。
+
+### 界面语言
+
+在 **设置 → Language / 语言** 中选择 **跟随系统、简体中文或 English**。切换立即生效，重启后保留选择；不支持的系统语言回退为英语。提示词、已保存的系列名、标签和作品内容保留原文。
+
+执行 `./scripts/run-localization-smoke.sh` 可验证语言选择、回退、动态文案、资源覆盖及内容保留，无需 XCTest。
+
+### 整合版本 0.5.63
+
+本次将 0.5.62 的动效与模型更新，合并进支持中英文选择和 SofunAI 出品标识的版本：新增闭环随机游走、持续缓动、LLaDA/Qwen 提示词与尺寸适配，以及一轮内不重复的持久化洗牌播放。保留已有作品库、语言偏好及 SofunAI 关于入口。
+
+额外验证：`./scripts/run-integration-smoke.sh`、`./scripts/run-localization-smoke.sh`、`python3 scripts/test_gen_download_page.py`。

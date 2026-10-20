@@ -151,8 +151,8 @@ final class OpenAIImageProviderTests: XCTestCase {
             XCTFail("missing model in list must fail early")
         } catch let error as MusepaperError {
             let text = error.localizedDescription
-            XCTAssertTrue(text.contains("没有「Qwen-Image-2512-Lightning」"), text)
-            XCTAssertTrue(text.contains("Hy3") || text.contains("令牌"), text)
+            XCTAssertTrue(text.contains(L10n.isChinese ? "没有「Qwen-Image-2512-Lightning」" : "“Qwen-Image-2512-Lightning” is missing"), text)
+            XCTAssertTrue(text.contains("Hy3") || text.contains(L10n.isChinese ? "令牌" : "Token"), text)
         }
     }
 
@@ -203,7 +203,7 @@ final class OpenAIImageProviderTests: XCTestCase {
         } catch let error as MusepaperError {
             let text = error.localizedDescription
             XCTAssertTrue(text.contains("Hy3"), text)
-            XCTAssertTrue(text.contains("对话") || text.contains("文生图") || text.contains("图像"), text)
+            XCTAssertTrue(text.contains(L10n.isChinese ? "对话" : "chat model") || text.contains(L10n.isChinese ? "文生图" : "image model") || text.contains(L10n.isChinese ? "图像" : "image access"), text)
         }
     }
 
@@ -222,9 +222,29 @@ final class OpenAIImageProviderTests: XCTestCase {
         } catch let error as MusepaperError {
             let text = error.localizedDescription
             XCTAssertTrue(text.contains("Qwen-Image-2512-Lightning"), text)
-            XCTAssertTrue(text.contains("AK") || text.contains("令牌"), text)
+            XCTAssertTrue(text.contains("AK") || text.contains(L10n.isChinese ? "令牌" : "Token"), text)
             XCTAssertFalse(text.contains("不要填 Hy3"), text)
         }
+    }
+
+    func testLLaDASizeStaysOnOfficial1024Family() {
+        XCTAssertEqual(
+            OpenAIImageProvider.normalizedSize(.qwenLandscapeHD, dialect: .antchat, model: "LLaDA-Image"),
+            "1536x1024"
+        )
+        XCTAssertEqual(
+            OpenAIImageProvider.normalizedSize(.qwenSquare, dialect: .antchat, model: "LLaDA-Image"),
+            "1024x1024"
+        )
+        var llada = ModelConfiguration()
+        llada.baseURL = "https://antchat.alipay.com/v1"
+        llada.model = "LLaDA-Image"
+        llada.size = .qwenLandscapeHD
+        XCTAssertEqual(OpenAIImageProvider.preferredSize(for: llada), .landscape)
+        var qwen = llada
+        qwen.model = "Qwen-Image-2512-Lightning"
+        qwen.size = .landscape
+        XCTAssertEqual(OpenAIImageProvider.preferredSize(for: qwen), .qwenLandscapeHD)
     }
 
     func testLooksLikeChatModel() {
@@ -257,7 +277,7 @@ private final class MockURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         do {
             guard let handler = Self.handler else { throw URLError(.unknown) }
-            let (response, data) = try handler(request)
+            let (response, data) = try handler(request.capturingBody())
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)

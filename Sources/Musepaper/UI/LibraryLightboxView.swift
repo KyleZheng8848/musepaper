@@ -1,17 +1,19 @@
 import SwiftUI
 
 struct WallpaperTargetPicker: View {
+    @Environment(\.locale) private var interfaceLocale
     @ObservedObject var model: StudioViewModel
     var width: CGFloat = 280
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("贴到").font(.caption).foregroundStyle(MuseTheme.muted)
-            Picker("贴到哪块屏幕", selection: Binding(
+            Text(L10n.tr("贴到")).font(.caption).foregroundStyle(MuseTheme.muted)
+                .fixedSize(horizontal: true, vertical: false)
+            Picker(L10n.tr("贴到哪块屏幕"), selection: Binding(
                 get: { model.wallpaperTargetID },
                 set: { model.selectWallpaperTarget($0) }
             )) {
-                Text("贴到全部屏幕").tag(StudioViewModel.allDisplaysTargetID)
+                Text(L10n.tr("贴到全部屏幕")).tag(StudioViewModel.allDisplaysTargetID)
                 ForEach(model.displayProfiles) { display in
                     Text(model.wallpaperTargetLabel(for: display)).tag(display.id)
                 }
@@ -24,6 +26,7 @@ struct WallpaperTargetPicker: View {
 }
 
 struct LibraryLightboxView: View {
+    @Environment(\.locale) private var interfaceLocale
     @ObservedObject var model: StudioViewModel
     @Binding var artworkID: UUID?
     var onReuse: (UUID) -> Void
@@ -107,14 +110,14 @@ struct LibraryLightboxView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     if browsingTrash {
-                        Text("回收箱")
+                        Text(L10n.tr("回收箱"))
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.black)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(MuseTheme.amber))
                     }
-                    Text(model.channels.first(where: { $0.id == record.request.seriesID })?.name ?? "未保存的一次")
+                    Text(model.channels.first(where: { $0.id == record.request.seriesID })?.name ?? L10n.tr("未保存的一次"))
                         .font(.headline)
                         .foregroundStyle(MuseTheme.ink)
                 }
@@ -123,14 +126,14 @@ struct LibraryLightboxView: View {
                     .foregroundStyle(MuseTheme.muted)
             }
             Spacer()
-            Button(showInfo ? "隐藏信息" : "显示信息") { showInfo.toggle() }
+            Button(showInfo ? L10n.tr("隐藏信息") : L10n.tr("显示信息")) { showInfo.toggle() }
                 .buttonStyle(.plain)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MuseTheme.ink)
                 .padding(.horizontal, 12)
                 .frame(height: 28)
                 .background(Capsule().fill(Color.white.opacity(0.10)))
-            Button("关闭") { close() }
+            Button(L10n.tr("关闭")) { close() }
                 .buttonStyle(.plain)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MuseTheme.ink)
@@ -249,20 +252,20 @@ struct LibraryLightboxView: View {
             )
         }
         .buttonStyle(.plain)
-        .help("第 \(index + 1) 张")
+        .help(L10n.tr("第 \(index + 1) 张"))
     }
 
     private func infoRail(_ record: GenerationRecord) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("作品信息").font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-                labeled("时间", StudioViewModel.artworkTimeCaption(record.createdAt))
+                Text(L10n.tr("作品信息")).font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+                labeled(L10n.tr("时间"), StudioViewModel.artworkTimeCaption(record.createdAt))
                 if let trashed = record.trashedAt {
-                    labeled("移入回收箱", StudioViewModel.artworkTimeCaption(trashed))
+                    labeled(L10n.tr("移入回收箱"), StudioViewModel.artworkTimeCaption(trashed))
                 }
                 let core = model.artworkCoreKeywords(record)
                 if !core.isEmpty {
-                    labeled("核心词", core)
+                    labeled(L10n.tr("核心词"), core)
                 }
                 if !record.finalPromptText.isEmpty {
                     DisclosureGroup {
@@ -272,25 +275,25 @@ struct LibraryLightboxView: View {
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     } label: {
-                        Text("最终 Prompt")
+                        Text(L10n.tr("最终 Prompt"))
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(MuseTheme.muted)
                     }
                 } else {
-                    labeled("最终 Prompt", "（无）")
+                    labeled(L10n.tr("最终 Prompt"), L10n.tr("（无）"))
                 }
                 if !record.resolvedTags.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("标签").font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
+                        Text(L10n.tr("标签")).font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
                         FlowTags(tags: record.resolvedTags)
                     }
                 }
                 Divider().overlay(Color.white.opacity(0.12))
-                Text("文件").font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
+                Text(L10n.tr("文件")).font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
                 Button {
                     model.revealArtworkInFinder(record.id, preferSource: false)
                 } label: {
-                    Label("在 Finder 显示壁纸", systemImage: "folder")
+                    Label(L10n.tr("在 Finder 显示壁纸"), systemImage: "folder")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
@@ -298,16 +301,16 @@ struct LibraryLightboxView: View {
                     Button {
                         model.revealArtworkInFinder(record.id, preferSource: true)
                     } label: {
-                        Label("在 Finder 显示原图", systemImage: "doc.viewfinder")
+                        Label(L10n.tr("在 Finder 显示原图"), systemImage: "doc.viewfinder")
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.borderedProminent)
                 } else {
-                    Text("这张没有单独原图文件（壁纸即源文件）。")
+                    Text(L10n.tr("这张没有单独原图文件（壁纸即源文件）。"))
                         .font(.caption2)
                         .foregroundStyle(MuseTheme.muted)
                 }
-                Text("快捷键：←→/空格翻页 · F 收藏 · I 信息 · ⌘R Finder · Delete 删除 · ⌘±/0 缩放")
+                Text(L10n.tr("快捷键：←→/空格翻页 · F 收藏 · I 信息 · ⌘R Finder · Delete 删除 · ⌘±/0 缩放"))
                     .font(.caption2)
                     .foregroundStyle(MuseTheme.muted)
                     .padding(.top, 4)
@@ -335,38 +338,38 @@ struct LibraryLightboxView: View {
                 WallpaperTargetPicker(model: model, width: 220)
             }
             Spacer()
-            Button(record.isFavorite ? "取消收藏" : "收藏") {
+            Button(record.isFavorite ? L10n.tr("取消收藏") : L10n.tr("收藏")) {
                 model.toggleFavorite(record.id)
             }
             .buttonStyle(.bordered)
             if !browsingTrash {
-                Button("再出") { onReuse(record.id) }
+                Button(L10n.tr("再出")) { onReuse(record.id) }
                     .buttonStyle(.bordered)
-                Button("重打标签") { model.retagArtwork(record.id) }
+                Button(L10n.tr("重打标签")) { model.retagArtwork(record.id) }
                     .buttonStyle(.bordered)
                     .disabled(model.isRetagging)
                 Button {
                     model.revealArtworkInFinder(record.id, preferSource: model.hasDistinctSourceImage(record))
                 } label: {
-                    Label("源文件", systemImage: "doc.viewfinder")
+                    Label(L10n.tr("源文件"), systemImage: "doc.viewfinder")
                 }
                 .buttonStyle(.bordered)
-                Button("删除", role: .destructive) { trashOrPurgeCurrent() }
+                Button(L10n.tr("删除"), role: .destructive) { trashOrPurgeCurrent() }
                     .buttonStyle(.bordered)
                 Button {
                     model.applyArtwork(record.id)
                 } label: {
-                    Label("设为壁纸", systemImage: "display")
+                    Label(L10n.tr("设为壁纸"), systemImage: "display")
                 }
                 .buttonStyle(.borderedProminent)
             } else {
-                Button("还原") {
+                Button(L10n.tr("还原")) {
                     let id = record.id
                     advanceAfterRemoval(of: id)
                     model.restoreFromTrash(id)
                 }
                 .buttonStyle(.borderedProminent)
-                Button("永久删除", role: .destructive) { trashOrPurgeCurrent() }
+                Button(L10n.tr("永久删除"), role: .destructive) { trashOrPurgeCurrent() }
                     .buttonStyle(.bordered)
             }
         }

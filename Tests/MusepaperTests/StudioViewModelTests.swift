@@ -8,7 +8,7 @@ final class StudioViewModelTests: XCTestCase {
         let model = makeModel()
 
         XCTAssertFalse(model.canGenerate)
-        XCTAssertEqual(model.modelStatusTitle, "需要配置 API Key")
+        XCTAssertEqual(model.modelStatusTitle, L10n.tr("需要配置 API Key"))
     }
 
     func testDemoProviderCanGenerateWithoutAPIKey() {
@@ -18,7 +18,7 @@ final class StudioViewModelTests: XCTestCase {
         model.selectModelConfiguration(demo.id)
 
         XCTAssertTrue(model.canGenerate)
-        XCTAssertEqual(model.modelStatusTitle, "离线演示已就绪")
+        XCTAssertEqual(model.modelStatusTitle, L10n.tr("离线演示已就绪"))
     }
 
     func testEndpointPreviewShowsActualRequestURL() {
@@ -37,11 +37,11 @@ final class StudioViewModelTests: XCTestCase {
         XCTAssertTrue(model.finalPrompt.isEmpty)
     }
 
-    func testCandidateSelectionControlsPreview() {
+    func testCandidateSelectionControlsPreview() throws {
         let model = makeModel()
         let batchID = UUID()
-        let first = makeRecord(path: "/tmp/first.png", batchID: batchID)
-        let second = makeRecord(path: "/tmp/second.png", batchID: batchID)
+        let first = makeRecord(path: try touchTempPNG(), batchID: batchID)
+        let second = makeRecord(path: try touchTempPNG(), batchID: batchID)
         model.records = [first, second]
         model.batches = [GenerationBatch(
             id: batchID, seriesID: nil, recordIDs: [first.id, second.id], selectedRecordID: first.id,
@@ -53,22 +53,22 @@ final class StudioViewModelTests: XCTestCase {
         model.selectCandidate(second.id)
 
         XCTAssertEqual(model.selectedCandidateID, second.id)
-        XCTAssertEqual(model.latestImageURL?.path, "/tmp/second.png")
+        XCTAssertEqual(model.latestImageURL?.path, second.imagePath)
         XCTAssertEqual(model.batches[0].selectedRecordID, first.id)
-        XCTAssertFalse(model.canApplySelected)
+        XCTAssertTrue(model.canApplySelected)
         XCTAssertTrue(model.canAdoptSelected)
         XCTAssertFalse(model.isSelectedAdopted)
     }
 
     func testGenerationBlockReasonWhenMissingKey() {
         let model = makeModel()
-        XCTAssertEqual(model.generationBlockReason, "还没连接图片模型。点「先用演示出图」可以立刻走完流程；真实出图去设置里填 API Key。")
+        XCTAssertEqual(model.generationBlockReason, L10n.tr("还没连接图片模型。点「先用演示出图」可以立刻走完流程；真实出图去设置里填 API Key。"))
     }
 
     func testUseOfflineDemoUnblocksGenerationWithoutLeavingCreate() {
         let model = makeModel()
         XCTAssertFalse(model.canGenerate)
-        XCTAssertEqual(model.generateActionTitle, "先用演示出图")
+        XCTAssertEqual(model.generateActionTitle, L10n.tr("先用演示出图"))
 
         model.useOfflineDemo()
 
@@ -83,8 +83,8 @@ final class StudioViewModelTests: XCTestCase {
         model.isOptimizingPrompt = true
 
         XCTAssertTrue(model.hasActiveResults)
-        XCTAssertEqual(model.creationStageTitle, "正在想画面")
-        XCTAssertEqual(model.stopActionTitle, "停止构思")
+        XCTAssertEqual(model.creationStageTitle, L10n.tr("正在想画面"))
+        XCTAssertEqual(model.stopActionTitle, L10n.tr("停止构思"))
 
         model.cancelCreation()
         XCTAssertFalse(model.isOptimizingPrompt)
@@ -96,7 +96,7 @@ final class StudioViewModelTests: XCTestCase {
         let demo = try! XCTUnwrap(model.modelConfigurations.first { $0.provider == .demo })
         model.selectModelConfiguration(demo.id)
 
-        XCTAssertEqual(model.generationBlockReason, "先在下面写下想看的画面，再点出图。")
+        XCTAssertEqual(model.generationBlockReason, L10n.tr("先在下面写下想看的画面，再点出图。"))
 
         model.draft.input = "雨后的上海"
         XCTAssertNil(model.generationBlockReason)
@@ -116,7 +116,7 @@ final class StudioViewModelTests: XCTestCase {
         let channel = InspirationChannel(name: "", essence: "", coreKeywords: "")
             .completingMissingFields(idea: "潮湿、安静、有巨大空间感的未来上海")
 
-        XCTAssertEqual(channel.name, String("潮湿、安静、有巨大空间感的未来上海".prefix(16)))
+        XCTAssertEqual(channel.name, "潮湿、安静")
         XCTAssertEqual(channel.essence, "潮湿、安静、有巨大空间感的未来上海")
         XCTAssertEqual(channel.resolvedCoreKeywords, "潮湿、安静、有巨大空间感的未来上海")
     }
@@ -208,8 +208,8 @@ final class StudioViewModelTests: XCTestCase {
         XCTAssertTrue(model.channels[0].resolvedScheduleEnabled)
         XCTAssertEqual(model.channels[0].resolvedScheduleIntervalHours, 4)
         XCTAssertEqual(model.channels[0].resolvedScheduledCandidateCount, 2)
-        XCTAssertTrue(model.scheduleSummary(for: model.channels[0]).hasPrefix("下次 "))
-        XCTAssertEqual(model.scheduleBadge(for: model.channels[0]), "自动")
+        XCTAssertTrue(model.scheduleSummary(for: model.channels[0]).hasPrefix(L10n.tr("下次") + " "))
+        XCTAssertEqual(model.scheduleBadge(for: model.channels[0]), L10n.tr("自动"))
     }
 
     func testBatchSizeAndCadenceAreWiderThanFourAndDaily() {
@@ -221,18 +221,18 @@ final class StudioViewModelTests: XCTestCase {
         model.setTaskSchedule(model.channels[0].id, enabled: true, count: 6, intervalHours: 5)
         XCTAssertEqual(model.channels[0].resolvedScheduledCandidateCount, 6)
         XCTAssertEqual(model.channels[0].resolvedScheduleIntervalHours, 5)
-        XCTAssertEqual(InspirationChannel.cadenceLabel(1), "每小时")
-        XCTAssertEqual(InspirationChannel.cadenceLabel(5), "每 5 小时")
-        XCTAssertEqual(InspirationChannel.cadenceLabel(48), "每 2 天")
-        XCTAssertEqual(InspirationChannel.cadenceLabel(168), "每 7 天")
-        XCTAssertEqual(InspirationChannel.cadenceLabel(seconds: 1), "每 10 秒")
+        XCTAssertEqual(InspirationChannel.cadenceLabel(1), L10n.tr("每小时"))
+        XCTAssertEqual(InspirationChannel.cadenceLabel(5), L10n.tr("每 \(5) 小时"))
+        XCTAssertEqual(InspirationChannel.cadenceLabel(48), L10n.tr("每 \(2) 天"))
+        XCTAssertEqual(InspirationChannel.cadenceLabel(168), L10n.tr("每 \(7) 天"))
+        XCTAssertEqual(InspirationChannel.cadenceLabel(seconds: 1), L10n.tr("每 \(10) 秒"))
         XCTAssertEqual(
             InspirationChannel.cadenceLabel(
                 seconds: 1,
                 minSeconds: WallpaperPlaylist.minIntervalSeconds,
                 maxSeconds: WallpaperPlaylist.maxIntervalSeconds
             ),
-            "每 1 秒"
+            L10n.tr("每 \(1) 秒")
         )
         XCTAssertEqual(InspirationChannel.clampedCount(12), 12)
         XCTAssertEqual(InspirationChannel.clampedCount(24), 24)
@@ -286,7 +286,7 @@ final class StudioViewModelTests: XCTestCase {
         XCTAssertEqual(model.batches[0].selectedRecordID, first.id)
         XCTAssertTrue(model.canApplySelected)
         XCTAssertTrue(model.canRegenerateSelected)
-        XCTAssertEqual(model.adoptActionTitle, "重新生成")
+        XCTAssertEqual(model.adoptActionTitle, L10n.tr("重新生成"))
 
         // Applying wallpaper adopts the seed; selecting alone does not.
         model.applySelectedCandidate()
@@ -352,7 +352,7 @@ final class StudioViewModelTests: XCTestCase {
     }
 
     func testBatchResolvedPromptsAreAllDifferent() async throws {
-        let model = makeModel()
+        let model = try await makeLoadedModel()
         model.useOfflineDemo()
         model.draft.input = "魔幻世界风景"
         model.batchSize = 4
@@ -383,9 +383,9 @@ final class StudioViewModelTests: XCTestCase {
         model.refreshDisplays()
 
         XCTAssertEqual(model.displayProfiles.count, 2)
-        XCTAssertEqual(model.displayProfiles[0].name, "主显示器")
-        XCTAssertEqual(model.displayProfiles[1].name, "显示器 2")
-        XCTAssertEqual(model.wallpaperTargetLabel(for: model.displayProfiles[0]), "只贴到：主显示器 · 3600×2338")
+        XCTAssertEqual(model.displayProfiles[0].name, L10n.tr("主显示器"))
+        XCTAssertEqual(model.displayProfiles[1].name, L10n.tr("显示器 \(2)"))
+        XCTAssertEqual(model.wallpaperTargetLabel(for: model.displayProfiles[0]), L10n.tr("只贴到：\(L10n.tr("主显示器")) · \(3600)×\(2338)"))
 
         model.selectWallpaperTarget("screen-1")
         XCTAssertFalse(model.settings.applyToAllDisplays)
@@ -401,10 +401,10 @@ final class StudioViewModelTests: XCTestCase {
     func testCreatePageCanSwitchImageModel() {
         let model = makeModel()
         let demo = try! XCTUnwrap(model.modelConfigurations.first { $0.provider == .demo })
-        XCTAssertTrue(model.imageModelPickerTitle(for: demo).contains("离线演示"))
+        XCTAssertTrue(model.imageModelPickerTitle(for: demo).contains(L10n.tr("离线演示")))
         model.selectModelConfiguration(demo.id)
         XCTAssertEqual(model.activeModelConfigurationID, demo.id)
-        XCTAssertEqual(model.imageModelCaption, "离线演示")
+        XCTAssertEqual(model.imageModelCaption, L10n.tr("离线演示"))
     }
 
     func testPathwayMismatchWhenImageModelDrifts() {
@@ -418,8 +418,11 @@ final class StudioViewModelTests: XCTestCase {
         XCTAssertNil(model.pathwayMismatchReason)
         XCTAssertTrue(model.imageModelCaption.contains("Qwen-Image-2512-Lightning"))
 
+        let verifiedRoute = model.verifiedImageRoute
         config.model = "Hy3"
         model.updateActiveModelConfiguration(config)
+        XCTAssertNil(model.verifiedImageRoute)
+        model.verifiedImageRoute = verifiedRoute
         XCTAssertNotNil(model.pathwayMismatchReason)
         XCTAssertTrue(model.pathwayMismatchReason?.contains("Hy3") == true)
     }
@@ -471,9 +474,9 @@ final class StudioViewModelTests: XCTestCase {
 
         model.selectChannel(seriesID)
 
-        XCTAssertEqual(model.activeCandidates.map(\.id), [older.id, newer.id])
-        XCTAssertEqual(model.selectedCandidateID, newer.id)
-        XCTAssertEqual(model.latestImageURL?.path, newerPath)
+        XCTAssertEqual(model.activeCandidates.map(\.id), [newer.id, older.id])
+        XCTAssertEqual(model.selectedCandidateID, older.id)
+        XCTAssertEqual(model.latestImageURL?.path, olderPath)
     }
 
     func testStartNewIdeaClearsSeriesAndPreview() throws {
@@ -502,11 +505,11 @@ final class StudioViewModelTests: XCTestCase {
         XCTAssertTrue(model.draft.input.isEmpty)
         XCTAssertTrue(model.creatingTaskFromComposer)
         XCTAssertTrue(model.shouldFocusComposer)
-        XCTAssertEqual(model.generationBlockReason, "先在下面写下想看的画面，再点出图。")
-        XCTAssertEqual(model.generateActionTitle, "先写下画面")
-        XCTAssertTrue(model.creationStageDetail.contains("写下想看的画面"))
-        XCTAssertTrue(model.creationStageDetail.contains("点出图"))
-        XCTAssertTrue(model.creationStageDetail.contains("设为壁纸"))
+        XCTAssertEqual(model.generationBlockReason, L10n.tr("先在下面写下想看的画面，再点出图。"))
+        XCTAssertEqual(model.generateActionTitle, L10n.tr("先写下画面"))
+        XCTAssertTrue(model.creationStageDetail.contains(L10n.isChinese ? "写下想看的画面" : "Describe a scene"))
+        XCTAssertTrue(model.creationStageDetail.contains(L10n.isChinese ? "点出图" : "Generate images"))
+        XCTAssertTrue(model.creationStageDetail.contains(L10n.isChinese ? "设为壁纸" : "wallpaper"))
     }
 
     func testLibrarySortOrderByCreatedAt() throws {
@@ -579,7 +582,7 @@ final class StudioViewModelTests: XCTestCase {
         model.deleteCurrentDesktopWallpaper(displayID: "screen-1")
 
         XCTAssertNil(model.records.first { $0.id == primary.id }?.trashedAt)
-        XCTAssertEqual(model.notice, "这块屏上还不是 Musepaper 作品，没法删除。")
+        XCTAssertEqual(model.notice, L10n.tr("这块屏上还不是 Musepaper 作品，没法删除。"))
     }
 
     func testDesktopLikeTargetsTheClickedScreen() throws {
@@ -656,6 +659,25 @@ final class StudioViewModelTests: XCTestCase {
             DisplayProbe(width: 1920, height: 1080, scale: 1)
         ]
         model.refreshDisplays()
+        return model
+    }
+
+    private func makeLoadedModel() async throws -> StudioViewModel {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let fixture = AppSnapshot()
+        let state = root.appendingPathComponent("state.json")
+        try JSONEncoder().encode(fixture).write(to: state)
+        let model = StudioViewModel(
+            store: JSONStore(fileURL: state), generationOutputDirectory: root.appendingPathComponent("images"),
+            credentialStore: CredentialStore(fileURL: root.appendingPathComponent("credentials.json"))
+        )
+        for _ in 0..<200 where !model.hasLoadedSnapshot {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertTrue(model.hasLoadedSnapshot)
+        XCTAssertEqual(model.channels.first?.id, fixture.channels.first?.id)
+        // A fresh real provider must not replace the explicit demo chosen after loading.
         return model
     }
 

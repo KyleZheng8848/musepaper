@@ -19,6 +19,6 @@ CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.cache/clang" swiftc \
   -target "$(uname -m)-apple-macosx14.0" \
   "${COMPILE_FILES[@]}" \
   "$PROJECT_DIR/Tests/Smoke/BatchFlowSmoke.swift" \
-  -o "$OUT"
+  -o "$OUT" -musepaper.interfaceLanguage zh-Hans
 
-"$OUT"
+"$OUT" -musepaper.interfaceLanguage zh-Hans

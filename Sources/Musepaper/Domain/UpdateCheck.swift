@@ -26,7 +26,7 @@ struct UpdateCheckResult: Equatable, Sendable {
             releasesUrl: nil,
             downloadUrl: nil,
             highlights: [],
-            message: "未配置更新源。默认读取 OSS 上的 latest.json。"
+            message: L10n.tr("未配置更新源。默认读取 OSS 上的 latest.json。")
         )
     }
 }
@@ -197,7 +197,7 @@ func evaluateUpdate(
             releasesUrl: releasesUrl,
             downloadUrl: downloadUrl,
             highlights: highlights,
-            message: "没读到线上版本号，稍后再试。"
+            message: L10n.tr("没读到线上版本号，稍后再试。")
         )
     }
     if compareVersions(latestN, currentN) > 0 {
@@ -208,7 +208,7 @@ func evaluateUpdate(
             releasesUrl: releasesUrl,
             downloadUrl: downloadUrl,
             highlights: highlights,
-            message: "有新版本 \(latestN)（当前 \(currentN)）。"
+            message: L10n.tr("有新版本 \(latestN)（当前 \(currentN)）。")
         )
     }
     return UpdateCheckResult(
@@ -218,7 +218,7 @@ func evaluateUpdate(
         releasesUrl: releasesUrl,
         downloadUrl: nil,
         highlights: highlights,
-        message: "已是最新版本 \(currentN)。"
+        message: L10n.tr("已是最新版本 \(currentN)。")
     )
 }
 

@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Musepaper uses your location to show desktop weather and temperature.";
+"NSLocationAlwaysUsageDescription" = "Musepaper uses your location to show desktop weather and temperature.";
+"NSLocationUsageDescription" = "Musepaper uses your location to show desktop weather and temperature.";
+"NSLocationWhenInUseUsageDescription" = "Musepaper uses your location to show desktop weather and temperature.";

@@ -36,13 +36,13 @@ struct OpenAIImageProvider: ImageProvider {
                     ? available.prefix(6).joined(separator: "、")
                     : sample.joined(separator: "、")
                 throw MusepaperError.generationFailed(
-                    "这把令牌（\(Self.fingerprint(apiKey))）在 \(configuration.baseURL) 上能列到 \(available.count) 个模型，但没有「\(wanted)」。常见原因：误存了只开对话的令牌。本机有图像权限的钥指纹请对照一下。列表里可见：\(hint)"
+                    L10n.tr("这把令牌（\(Self.fingerprint(apiKey))）在 \(configuration.baseURL) 上能列到 \(available.count) 个模型，但没有「\(wanted)」。常见原因：误存了只开对话的令牌。本机有图像权限的钥指纹请对照一下。列表里可见：\(hint)")
                 )
             }
         }
         if Self.looksLikeChatModel(configuration.model) {
             throw MusepaperError.invalidConfiguration(
-                "「\(configuration.model)」像对话模型。文生图请填图像模型名（例如 Qwen-Image-2512-Lightning），不要填 Hy3 / GPT。"
+                L10n.tr("「\(configuration.model)」像对话模型。文生图请填图像模型名（例如 Qwen-Image-2512-Lightning），不要填 Hy3 / GPT。")
             )
         }
         let folder = FileManager.default.temporaryDirectory
@@ -101,7 +101,7 @@ struct OpenAIImageProvider: ImageProvider {
                 model: configuration.model,
                 prompt: promptForImageModel(request),
                 n: configuration.imageCount,
-                size: Self.normalizedSize(configuration.size, dialect: dialect),
+                size: Self.normalizedSize(configuration.size, dialect: dialect, model: configuration.model),
                 quality: configuration.quality.rawValue,
                 outputFormat: configuration.outputFormat.rawValue,
                 negativePrompt: sendsNegativePrompt ? request.negativePrompt : nil,
@@ -114,8 +114,8 @@ struct OpenAIImageProvider: ImageProvider {
         let data = try await perform(urlRequest)
         let response: ImageGenerationResponse
         do { response = try JSONDecoder().decode(ImageGenerationResponse.self, from: data) }
-        catch { throw MusepaperError.invalidResponse("图片响应 JSON 解析失败：\(error.localizedDescription)") }
-        guard !response.data.isEmpty else { throw MusepaperError.invalidResponse("响应中没有图片") }
+        catch { throw MusepaperError.invalidResponse(L10n.tr("图片响应 JSON 解析失败：\(error.localizedDescription)")) }
+        guard !response.data.isEmpty else { throw MusepaperError.invalidResponse(L10n.tr("响应中没有图片")) }
 
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
         var urls: [URL] = []
@@ -125,11 +125,11 @@ struct OpenAIImageProvider: ImageProvider {
                 imageData = decoded
             } else if let remote = item.url, let remoteURL = URL(string: remote) {
                 do { imageData = try await session.data(from: remoteURL).0 }
-                catch { throw MusepaperError.networkFailed("图片下载失败：\(error.localizedDescription)") }
+                catch { throw MusepaperError.networkFailed(L10n.tr("图片下载失败：\(error.localizedDescription)")) }
             } else {
-                throw MusepaperError.invalidResponse("第 \(index + 1) 张图片缺少 b64_json 或 url")
+                throw MusepaperError.invalidResponse(L10n.tr("第 \(index + 1) 张图片缺少 b64_json 或 url"))
             }
-            guard !imageData.isEmpty else { throw MusepaperError.invalidResponse("第 \(index + 1) 张图片为空") }
+            guard !imageData.isEmpty else { throw MusepaperError.invalidResponse(L10n.tr("第 \(index + 1) 张图片为空")) }
             let url = outputDirectory.appendingPathComponent("\(request.id.uuidString)-\(index + 1).\(configuration.outputFormat.fileExtension)")
             try imageData.write(to: url, options: .atomic)
             urls.append(url)
@@ -145,7 +145,7 @@ struct OpenAIImageProvider: ImageProvider {
         var fields = [
             "model": configuration.model,
             "prompt": promptForImageModel(request),
-            "size": Self.normalizedSize(configuration.size, dialect: dialect)
+            "size": Self.normalizedSize(configuration.size, dialect: dialect, model: configuration.model)
         ]
         switch dialect {
         case .officialOpenAI:
@@ -168,9 +168,9 @@ struct OpenAIImageProvider: ImageProvider {
             append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(key)\"\r\n\r\n\(fields[key]!)\r\n")
         }
         for url in references.prefix(8) {
-            guard FileManager.default.fileExists(atPath: url.path) else { throw MusepaperError.invalidConfiguration("参考图片不存在：\(url.lastPathComponent)") }
+            guard FileManager.default.fileExists(atPath: url.path) else { throw MusepaperError.invalidConfiguration(L10n.tr("参考图片不存在：\(url.lastPathComponent)")) }
             let data = try Data(contentsOf: url)
-            guard !data.isEmpty, data.count <= 25 * 1024 * 1024 else { throw MusepaperError.invalidConfiguration("参考图片为空或超过 25 MB：\(url.lastPathComponent)") }
+            guard !data.isEmpty, data.count <= 25 * 1024 * 1024 else { throw MusepaperError.invalidConfiguration(L10n.tr("参考图片为空或超过 25 MB：\(url.lastPathComponent)")) }
             let mime = ["jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"][url.pathExtension.lowercased()] ?? "image/png"
             append("--\(boundary)\r\nContent-Disposition: form-data; name=\"image[]\"; filename=\"\(url.lastPathComponent)\"\r\nContent-Type: \(mime)\r\n\r\n")
             body.append(data)
@@ -193,7 +193,8 @@ struct OpenAIImageProvider: ImageProvider {
         PromptComposer().imageModelPrompt(
             request.resolvedPrompt,
             core: request.coreKeywords ?? request.rawInput,
-            seed: request.variationSeed ?? request.resolvedPrompt.hashValue
+            seed: request.variationSeed ?? request.resolvedPrompt.hashValue,
+            model: configuration.model
         )
     }
 
@@ -221,7 +222,11 @@ struct OpenAIImageProvider: ImageProvider {
 
     /// Map UI size picks onto what each gateway actually accepts.
     /// AntChat/Qwen: prefer native Qwen sizes (up to ~2048). Official OpenAI: only 1024/1536 family.
-    static func normalizedSize(_ size: GeneratedImageSize, dialect: ImageAPIDialect) -> String {
+    /// LLaDA-Image official demo is 1024×1024 and needs sides divisible by 16 — not Qwen 2048.
+    static func normalizedSize(_ size: GeneratedImageSize, dialect: ImageAPIDialect, model: String = "") -> String {
+        if ImagePromptDialect.infer(from: model) == .llada {
+            return lladaNativeSize(size)
+        }
         switch dialect {
         case .officialOpenAI:
             switch size {
@@ -238,11 +243,34 @@ struct OpenAIImageProvider: ImageProvider {
         }
     }
 
+    static func lladaNativeSize(_ size: GeneratedImageSize) -> String {
+        switch size {
+        case .square, .qwenSquare:
+            return GeneratedImageSize.square.rawValue
+        case .portrait, .qwenPortrait:
+            return GeneratedImageSize.portrait.rawValue
+        case .landscape, .qwenLandscape, .qwenLandscapeHD, .automatic:
+            return GeneratedImageSize.landscape.rawValue
+        }
+    }
+
     /// Prefer a sharp Qwen landscape size when the host is AntChat and the user
-    /// is still on the soft OpenAI 1536×1024 default.
+    /// is still on the soft OpenAI 1536×1024 default. LLaDA stays on the 1024 family.
     static func preferredSize(for configuration: ModelConfiguration) -> GeneratedImageSize {
         let dialect = imageAPIDialect(baseURL: configuration.baseURL)
         guard dialect == .antchat else { return configuration.size }
+        if ImagePromptDialect.infer(from: configuration.model) == .llada {
+            switch configuration.size {
+            case .qwenLandscapeHD, .qwenLandscape, .automatic:
+                return .landscape
+            case .qwenSquare:
+                return .square
+            case .qwenPortrait:
+                return .portrait
+            default:
+                return configuration.size
+            }
+        }
         switch configuration.size {
         case .landscape, .automatic, .square:
             return .qwenLandscapeHD
@@ -253,12 +281,12 @@ struct OpenAIImageProvider: ImageProvider {
 
     private func endpoint(_ path: String) throws -> URL {
         guard var components = URLComponents(string: configuration.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))) else {
-            throw MusepaperError.invalidConfiguration("Base URL 无法解析")
+            throw MusepaperError.invalidConfiguration(L10n.tr("Base URL 无法解析"))
         }
         let suffix = path.split(separator: "/").map(String.init)
         let existing = components.path.split(separator: "/").map(String.init)
         components.path = "/" + (existing + suffix).joined(separator: "/")
-        guard let url = components.url else { throw MusepaperError.invalidConfiguration("请求地址无法构建") }
+        guard let url = components.url else { throw MusepaperError.invalidConfiguration(L10n.tr("请求地址无法构建")) }
         return url
     }
 
@@ -273,11 +301,11 @@ struct OpenAIImageProvider: ImageProvider {
         let unauthorizedModel = status == 401 || message.contains("未授权") || message.localizedCaseInsensitiveContains("unauthorized")
         if missingModel || unauthorizedModel {
             if Self.looksLikeChatModel(model) {
-                return "HTTP \(status)：「\(model)」像对话模型。出图要用文生图名（例如 Qwen-Image-2512-Lightning），不要填 Hy3。"
+                return L10n.tr("HTTP \(status)：「\(model)」像对话模型。出图要用文生图名（例如 Qwen-Image-2512-Lightning），不要填 Hy3。")
             }
-            return "HTTP \(status)：\(endpoint) 拒绝了「\(model)」。令牌 \(Self.fingerprint(apiKey)) 能通过鉴权，但生图仍说模型不存在——通常是这把令牌没开图像推理（Hy3 对话通了也不算），或和本机不是同一把钥。请在本机设置里看成功时的令牌指纹对照。原文：\(message)"
+            return L10n.tr("HTTP \(status)：\(endpoint) 拒绝了「\(model)」。令牌 \(Self.fingerprint(apiKey)) 能通过鉴权，但生图仍说模型不存在——通常是这把令牌没开图像推理（Hy3 对话通了也不算），或和本机不是同一把钥。请在本机设置里看成功时的令牌指纹对照。原文：\(message)")
         }
-        return "HTTP \(status)：\(message)（模型 \(model)）"
+        return L10n.tr("HTTP \(status)：\(message)（模型 \(model)）")
     }
 
     static func looksLikeChatModel(_ model: String) -> Bool {
@@ -302,25 +330,25 @@ struct OpenAIImageProvider: ImageProvider {
         let response: URLResponse
         do { (data, response) = try await session.data(for: request) }
         catch let error as URLError {
-            if error.code == .timedOut { throw MusepaperError.networkFailed("请求超时，请检查模型超时设置") }
+            if error.code == .timedOut { throw MusepaperError.networkFailed(L10n.tr("请求超时，请检查模型超时设置")) }
             throw MusepaperError.networkFailed(error.localizedDescription)
         } catch { throw MusepaperError.networkFailed(error.localizedDescription) }
 
-        guard let http = response as? HTTPURLResponse else { throw MusepaperError.invalidResponse("缺少 HTTP 状态") }
+        guard let http = response as? HTTPURLResponse else { throw MusepaperError.invalidResponse(L10n.tr("缺少 HTTP 状态")) }
         switch http.statusCode {
         case 200..<300: return data
         case 401, 403:
             let apiError = try? JSONDecoder().decode(APIErrorEnvelope.self, from: data)
             let message = apiError?.error.message ?? String(data: data.prefix(600), encoding: .utf8) ?? ""
             if message.contains("模型") || message.localizedCaseInsensitiveContains("model") {
-                throw MusepaperError.generationFailed(explainFailure(status: http.statusCode, message: message.isEmpty ? "未授权" : message))
+                throw MusepaperError.generationFailed(explainFailure(status: http.statusCode, message: message.isEmpty ? "unauthorized" : message))
             }
             throw MusepaperError.unauthorized
         case 402: throw MusepaperError.paymentRequired
         case 429: throw MusepaperError.rateLimited(retryAfter: http.value(forHTTPHeaderField: "Retry-After"))
         default:
             let apiError = try? JSONDecoder().decode(APIErrorEnvelope.self, from: data)
-            let message = apiError?.error.message ?? String(data: data.prefix(600), encoding: .utf8) ?? "未知错误"
+            let message = apiError?.error.message ?? String(data: data.prefix(600), encoding: .utf8) ?? L10n.tr("未知错误")
             let billingText = [message, apiError?.error.code ?? "", apiError?.error.type ?? ""].joined(separator: " ").lowercased()
             if billingText.contains("quota") || billingText.contains("billing") || billingText.contains("credit") { throw MusepaperError.paymentRequired }
             throw MusepaperError.generationFailed(explainFailure(status: http.statusCode, message: message))

@@ -40,8 +40,9 @@ struct SofunAIStudioMark: View {
 }
 
 struct SofunAIPublisherView: View {
+    @Environment(\.locale) private var interfaceLocale
     var publisher = "SofunAI Studio"
-    var summary = "SofunAI 工作室出品并维护"
+    var summary: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -51,7 +52,7 @@ struct SofunAIPublisherView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(publisher)
                     .font(.system(.headline, design: .rounded))
-                Text(summary)
+                Text(summary ?? L10n.tr("SofunAI 工作室出品并维护"))
                     .font(.caption)
                     .opacity(0.8)
             }

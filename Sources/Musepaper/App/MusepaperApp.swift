@@ -4,12 +4,14 @@ import SwiftUI
 @main
 struct MusepaperApp: App {
     @NSApplicationDelegateAdaptor(MusepaperAppDelegate.self) private var appDelegate
+    @StateObject private var language = LanguagePreferences.shared
 
     var body: some Scene {
         Settings { EmptyView() }
             .commands {
                 CommandGroup(replacing: .appInfo) {
-                    Button("关于 Musepaper") { appDelegate.showAboutWindow() }
+                    Button(L10n.tr("关于 Musepaper")) { appDelegate.showAboutWindow() }
+                        .environment(\.locale, language.selection.locale)
                 }
             }
     }
@@ -25,6 +27,7 @@ final class MusepaperAppDelegate: NSObject, NSApplicationDelegate {
 
     func showAboutWindow() {
         if let aboutWindow {
+            aboutWindow.title = L10n.tr("关于 Musepaper")
             aboutWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -35,7 +38,7 @@ final class MusepaperAppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        aboutWindow.title = "关于 Musepaper"
+        aboutWindow.title = L10n.tr("关于 Musepaper")
         aboutWindow.isReleasedWhenClosed = false
         aboutWindow.contentView = NSHostingView(rootView: MusepaperAboutView { [weak self] in
             self?.aboutWindow?.close()
@@ -47,6 +50,16 @@ final class MusepaperAppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.addObserver(
+            forName: .musepaperOpenAbout, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.showAboutWindow() }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .musepaperLanguageChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.aboutWindow?.title = L10n.tr("关于 Musepaper") }
+        }
         NotificationCenter.default.addObserver(
             forName: .musepaperOpenMainWindow, object: nil, queue: .main
         ) { [weak self] _ in

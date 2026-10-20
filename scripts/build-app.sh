@@ -49,6 +49,9 @@ CLANG_MODULE_CACHE_PATH="$MODULE_CACHE" swiftc \
   -swift-version 6 \
   -target "$SWIFT_TARGET" \
   -framework CoreLocation \
+  -framework Metal \
+  -framework QuartzCore \
+  -framework Vision \
   "${SOURCE_FILES[@]}" \
   -o "$TEMP_APP/Contents/MacOS/Musepaper"
 
@@ -67,6 +70,7 @@ cp "$PROJECT_DIR/Packaging/Info.plist" "$TEMP_APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$TEMP_APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$TEMP_APP/Contents/Info.plist"
 cp "$PROJECT_DIR/Packaging/Resources/Musepaper.icns" "$TEMP_APP/Contents/Resources/Musepaper.icns"
+cp -R "$PROJECT_DIR"/Sources/Musepaper/Resources/*.lproj "$TEMP_APP/Contents/Resources/"
 codesign --force --deep --sign - "$TEMP_APP"
 
 rm -rf "$APP_DIR"

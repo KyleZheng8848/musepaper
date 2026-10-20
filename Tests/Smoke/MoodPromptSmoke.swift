@@ -114,6 +114,136 @@ struct MoodPromptSmoke {
             fatalError("ocean locked to landscape: \(ocean)")
         }
 
+        let cafeCore = "一个咖啡店门口有一个黑板"
+        let llada = composer.imageModelPrompt(
+            "夜雾里一个剪影，黑板上写着qwennewbee欢迎，volumetric fog, cinematic noir",
+            core: cafeCore,
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        guard llada.contains("电影感照片") else { fatalError("LLaDA must use a photo sentence: \(llada)") }
+        guard llada.contains("咖啡店") || llada.contains("黑板") else { fatalError("LLaDA cafe lost the subject: \(llada)") }
+        guard !llada.localizedCaseInsensitiveContains("those characters") else { fatalError("LLaDA kept instruction echo: \(llada)") }
+        guard !llada.localizedCaseInsensitiveContains("this frame differs") else { fatalError("LLaDA kept agent scaffold: \(llada)") }
+        guard !llada.localizedCaseInsensitiveContains("noir") else { fatalError("LLaDA defaulted to noir: \(llada)") }
+        guard !llada.localizedCaseInsensitiveContains("newbee") else { fatalError("LLaDA kept painted brand: \(llada)") }
+        guard !llada.localizedCaseInsensitiveContains("qwen") else { fatalError("LLaDA kept painted qwen: \(llada)") }
+        guard !llada.contains("，里") && !llada.hasSuffix("里") else { fatalError("LLaDA left strip debris: \(llada)") }
+        let cafePlan = composer.framePlan(core: cafeCore, seed: 1, model: "LLaDA-Image")
+        let aligned = composer.alignVariationHint("薄雾把后景削成淡色的层，广角强调空间深度", to: cafePlan)
+        guard !aligned.contains("薄雾") else { fatalError("daylight plan still asked for 薄雾: \(aligned)") }
+        guard !llada.contains("写着") else { fatalError("LLaDA kept 写着: \(llada)") }
+        let night = composer.imageModelPrompt(
+            "雨夜的未来上海，湿沥青倒映霓虹",
+            core: "雨夜的未来上海",
+            seed: 3,
+            model: "LLaDA-Image"
+        )
+        guard !night.localizedCaseInsensitiveContains("even daylight") else {
+            fatalError("requested night must not be forced to daylight: \(night)")
+        }
+        guard !night.localizedCaseInsensitiveContains("bright natural daylight") else {
+            fatalError("requested night must not be forced to daylight: \(night)")
+        }
+        guard !night.contains("晴朗日光") && !night.contains("正午强光") else {
+            fatalError("requested night must not be forced to daylight: \(night)")
+        }
+        guard night.contains("雨") || night.contains("上海") else { fatalError("LLaDA night lost the subject: \(night)") }
+        guard night.contains("电影感照片") else { fatalError("LLaDA night must be a photo sentence: \(night)") }
+        let aerial = composer.imageModelPrompt(
+            "从水上飞机高空俯瞰地面，马尔代夫，Those characters are the subject name",
+            core: "从水上飞机高空俯瞰地面，马尔代夫",
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        guard aerial.contains("马尔代夫") || aerial.contains("俯瞰") else { fatalError("LLaDA aerial lost meaning: \(aerial)") }
+        guard aerial.contains("电影感照片") else { fatalError("LLaDA aerial must be a photo sentence: \(aerial)") }
+        guard !aerial.localizedCaseInsensitiveContains("those characters") else { fatalError("LLaDA aerial kept echo: \(aerial)") }
+        guard !aerial.localizedCaseInsensitiveContains("higher angle") else {
+            fatalError("LLaDA aerial pushed higher haze: \(aerial)")
+        }
+        print("LLADA_AERIAL \(aerial)")
+        print("LLADA_CAFE \(llada)")
+        print("LLADA_NIGHT \(night)")
+        let crystal = composer.imageModelPrompt("晶石", core: "晶石", seed: 2, model: "LLaDA-Image")
+        guard crystal.contains("晶石") else {
+            fatalError("LLaDA 晶石 lost the mineral: \(crystal)")
+        }
+        guard !crystal.localizedCaseInsensitiveContains("given subject") else {
+            fatalError("LLaDA 晶石 fell back to given subject: \(crystal)")
+        }
+        guard !crystal.localizedCaseInsensitiveContains("person") && !crystal.localizedCaseInsensitiveContains("woman") else {
+            fatalError("LLaDA 晶石 became a person: \(crystal)")
+        }
+        print("LLADA_CRYSTAL \(crystal)")
+        let lladaBatch = composer.uniqueScenePrompts(
+            idea: "从水上飞机高空俯瞰地面，马尔代夫",
+            channel: nil,
+            emptySpace: .none,
+            seedBase: 42,
+            count: 4
+        ).enumerated().map { index, scene in
+            composer.imageModelPrompt(
+                scene,
+                core: "从水上飞机高空俯瞰地面，马尔代夫",
+                seed: 42 + index,
+                model: "LLaDA-Image"
+            )
+        }
+        guard Set(lladaBatch).count == 4 else {
+            fatalError("LLaDA batch prompts must differ:\n\(lladaBatch.joined(separator: "\n"))")
+        }
+        print("LLADA_BATCH \(lladaBatch.joined(separator: " | "))")
+        for model in ["LLaDA-Image", "Qwen-Image", "gpt-image-2", "flux-schnell"] {
+            let batchPrompts = composer.uniqueScenePrompts(
+                idea: "从水上飞机高空俯瞰地面，马尔代夫",
+                channel: nil,
+                emptySpace: .none,
+                seedBase: 42,
+                count: 4
+            ).enumerated().map { index, scene in
+                composer.imageModelPrompt(
+                    scene,
+                    core: "从水上飞机高空俯瞰地面，马尔代夫",
+                    seed: 42 + index,
+                    model: model
+                )
+            }
+            guard Set(batchPrompts).count == 4 else {
+                fatalError("\(model) batch prompts must differ:\n\(batchPrompts.joined(separator: "\n"))")
+            }
+            print("BATCH_\(model) \(batchPrompts.joined(separator: " | "))")
+        }
+        guard !PromptAgent.systemPrompt.contains("no text") else {
+            fatalError("agent system prompt must not say no text")
+        }
+        guard !PromptAgent.systemPrompt.contains("没有文字") else {
+            fatalError("agent system prompt must not say 没有文字")
+        }
+        for banned in ["不要整批", "空院子", "阴间", "女人", "黑板", "no text"] {
+            guard !PromptAgent.systemPrompt.contains(banned) else {
+                fatalError("agent system still steers with \(banned)")
+            }
+        }
+        let lladaSystem = PromptAgent.systemPrompt(for: .llada)
+        let qwenSystem = PromptAgent.systemPrompt(for: .qwen)
+        guard lladaSystem.contains("一张电影感照片") else {
+            fatalError("LLaDA agent must write a photo sentence")
+        }
+        for text in [lladaSystem, qwenSystem, PromptAgent.visualUserInput(
+            PromptEnhancementContext(
+                rawPrompt: "晶石", deterministicPrompt: "晶石",
+                channelName: nil, channelEssence: nil, requiredElements: nil,
+                excludedElements: "文字、水印", palette: nil, emptySpace: "无",
+                displayWidth: 2560, displayHeight: 1440, referenceImageCount: 0,
+                coreKeywords: "晶石", imageModel: "LLaDA-Image"
+            )
+        )] {
+            guard !text.contains("Those characters") else { fatalError("agent still sent Those characters") }
+            guard !text.localizedCaseInsensitiveContains("this frame differs") else { fatalError("agent still sent This frame differs") }
+            guard !text.contains("no text") else { fatalError("agent still sent no text") }
+        }
+
         let batch = composer.uniqueScenePrompts(
             idea: core, channel: nil, emptySpace: .none, seedBase: 11, count: 4
         )
@@ -133,6 +263,78 @@ struct MoodPromptSmoke {
         guard !composer.shouldAdoptTypedIdeaAsSeriesCore(locked: core, idea: "园子里的女人") else {
             fatalError("agent woman must not steal mood core")
         }
+
+        let cafeInput = PromptAgent.visualUserInput(
+            PromptEnhancementContext(
+                rawPrompt: cafeCore, deterministicPrompt: cafeCore,
+                channelName: nil, channelEssence: nil, requiredElements: nil,
+                excludedElements: "文字、水印", palette: nil, emptySpace: "无",
+                displayWidth: 2560, displayHeight: 1440, referenceImageCount: 0,
+                coreKeywords: cafeCore, imageModel: "LLaDA-Image"
+            )
+        )
+        guard cafeInput.contains("主题：") else { fatalError("LLaDA agent input lost 主题： \(cafeInput)") }
+        guard cafeInput.contains("光："), cafeInput.contains("看：") else { fatalError("LLaDA agent input lost 光/看: \(cafeInput)") }
+        guard !cafeInput.contains("不要") else { fatalError("LLaDA agent input still said 不要: \(cafeInput)") }
+        guard !cafeInput.contains("深色空板"), !cafeInput.contains("板面空白") else {
+            fatalError("cafe agent input still steers the board: \(cafeInput)")
+        }
+        guard !cafeInput.contains("Those characters"), !cafeInput.localizedCaseInsensitiveContains("this frame differs") else {
+            fatalError("LLaDA agent input leaked scaffold: \(cafeInput)")
+        }
+        let dirtyLlada = composer.finishAgentPrompt(
+            "咖啡店门口，夜雾里一个剪影，黑板上写着qwennewbee欢迎",
+            core: cafeCore,
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        guard dirtyLlada.contains("电影感照片") else { fatalError("dirty LLaDA agent last-mile lost photo sentence: \(dirtyLlada)") }
+        guard dirtyLlada.contains("咖啡店") || dirtyLlada.contains("黑板") else { fatalError("dirty LLaDA agent last-mile lost cafe: \(dirtyLlada)") }
+        guard !dirtyLlada.contains("写着"), !dirtyLlada.localizedCaseInsensitiveContains("qwennewbee") else {
+            fatalError("dirty LLaDA agent last-mile kept painted letters: \(dirtyLlada)")
+        }
+        let qwenDragon = composer.finishAgentPrompt(
+            "五爪金龙盘在岩上，鳞片反光，云海铺到画面四边",
+            core: "五爪金龙",
+            seed: 3,
+            model: "Qwen-Image"
+        )
+        guard qwenDragon.contains("五爪金龙") else { fatalError("Qwen agent last-mile lost 五爪金龙: \(qwenDragon)") }
+        guard qwenDragon.localizedCaseInsensitiveContains("photorealistic") else {
+            fatalError("Qwen agent last-mile lost photorealistic wrap: \(qwenDragon)")
+        }
+        let moodInput = PromptAgent.visualUserInput(
+            PromptEnhancementContext(
+                rawPrompt: core, deterministicPrompt: core,
+                channelName: nil, channelEssence: nil, requiredElements: nil,
+                excludedElements: "文字、水印", palette: nil, emptySpace: "无",
+                displayWidth: 2560, displayHeight: 1440, referenceImageCount: 0,
+                coreKeywords: core
+            )
+        )
+        guard moodInput.contains("主题：") else { fatalError("mood agent input lost 主题： \(moodInput)") }
+        guard !moodInput.contains("不要") else { fatalError("mood agent input still said 不要: \(moodInput)") }
+        guard !moodInput.contains("看见：") else { fatalError("mood agent input still injected a sighting example: \(moodInput)") }
+        let crystalInput = PromptAgent.visualUserInput(
+            PromptEnhancementContext(
+                rawPrompt: "晶石", deterministicPrompt: "晶石",
+                channelName: nil, channelEssence: nil, requiredElements: nil,
+                excludedElements: "文字、水印", palette: nil, emptySpace: "无",
+                displayWidth: 2560, displayHeight: 1440, referenceImageCount: 0,
+                coreKeywords: "晶石",
+                dimensionCombo: "黄昏把海面烧成一条金色道路，超广角让近处浪很大",
+                imageModel: "LLaDA-Image"
+            )
+        )
+        guard crystalInput.contains("主题：晶石") else { fatalError("晶石 agent lost the mineral: \(crystalInput)") }
+        guard !crystalInput.contains("不要") else { fatalError("LLaDA 晶石 input still instructed with 不要: \(crystalInput)") }
+        guard !crystalInput.contains("This frame differs") else { fatalError("晶石 input leaked scaffold") }
+        guard crystalInput.contains("这一张多看见：黄昏把海面烧成一条金色道路") || crystalInput.contains("黄昏") else {
+            fatalError("LLaDA combo must stay a short Chinese clause: \(crystalInput)")
+        }
+        print("AGENT_LLADA_CRYSTAL_INPUT\n\(crystalInput)")
+        print("AGENT_LLADA_DIRTY \(dirtyLlada)")
+        print("AGENT_QWEN_DRAGON \(qwenDragon)")
 
         print("MOOD_PROMPT_OK ui=\(dirty)")
         print("IMAGE_MODEL_PROMPT \(imagePrompt)")

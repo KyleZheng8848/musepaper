@@ -74,13 +74,20 @@ final class StudioViewModel: ObservableObject {
     var libraryCountCaption: String {
         if libraryShowsTrash {
             let count = trashedArtworks.count
-            return count == 0 ? "回收箱是空的" : "回收箱 \(count) 张 · 可还原或永久删除"
+            return count == 0 ? L10n.tr("回收箱是空的") : L10n.tr("回收箱 \(count) 张 · 可还原或永久删除")
         }
         let shown = filteredArtworks.count
         if diskTotalFileCount == 0 {
-            return "\(shown) 张壁纸"
+            return L10n.tr("\(shown) 张壁纸")
         }
-        return "\(shown) 张壁纸 · 磁盘 \(diskTotalFileCount) 个文件（壁纸 \(diskWallpaperCount) + 原图 \(diskRawCount)）"
+        return L10n.tr("\(shown) 张壁纸 · 磁盘 \(diskTotalFileCount) 个文件（壁纸 \(diskWallpaperCount) + 原图 \(diskRawCount)）")
+    }
+
+    func refreshInterfaceLanguage() {
+        objectWillChange.send()
+        refreshMenuBar()
+        desktopControls.refreshLanguage()
+        desktopClock.refreshLanguage()
     }
 
     private let composer = PromptComposer()
@@ -104,6 +111,7 @@ final class StudioViewModel: ObservableObject {
     /// Blocks writes until the first load finishes — prevents wiping a good
     /// on-disk library with in-memory defaults when decode fails.
     private var persistenceEnabled = false
+    var hasLoadedSnapshot: Bool { persistenceEnabled }
     /// Only write model/prompt API blocks after they were loaded from disk or edited by the user.
     private var allowPersistingModelConfigurations = false
     private var generationTask: Task<Void, Never>?
@@ -192,22 +200,22 @@ final class StudioViewModel: ObservableObject {
     var canRegenerateSelected: Bool {
         selectedCandidate?.hasUsableImageFile == true && !isCreationBusy
     }
-    var adoptActionTitle: String { "重新生成" }
+    var adoptActionTitle: String { L10n.tr("重新生成") }
     var adoptHint: String {
-        if canApplySelected { return "可直接设为壁纸；「重新生成」会用这张的最终提示词重出并替换它。" }
-        if isCreationBusy && activeCandidates.isEmpty { return "图还没出来。出来后点选一张即可设为壁纸。" }
-        if activeCandidates.isEmpty { return "先出一组图，再点选一张。" }
-        return "先点选一张图。"
+        if canApplySelected { return L10n.tr("可直接设为壁纸；「重新生成」会用这张的最终提示词重出并替换它。") }
+        if isCreationBusy && activeCandidates.isEmpty { return L10n.tr("图还没出来。出来后点选一张即可设为壁纸。") }
+        if activeCandidates.isEmpty { return L10n.tr("先出一组图，再点选一张。") }
+        return L10n.tr("先点选一张图。")
     }
     var canGenerate: Bool { activeModelConfiguration?.provider == .demo || apiKeyConfigured }
 
     /// Honest top-bar status — Key on disk ≠ pathway verified.
     var connectionBadgeTitle: String {
-        guard let config = activeModelConfiguration else { return "未配置" }
-        if config.provider == .demo { return "离线演示" }
-        if let route = verifiedImageRoute, route.matches(config) { return "已验证" }
-        if apiKeyConfigured { return "Key 已存" }
-        return "未配置"
+        guard let config = activeModelConfiguration else { return L10n.tr("未配置") }
+        if config.provider == .demo { return L10n.tr("离线演示") }
+        if let route = verifiedImageRoute, route.matches(config) { return L10n.tr("已验证") }
+        if apiKeyConfigured { return L10n.tr("Key 已存") }
+        return L10n.tr("未配置")
     }
 
     var connectionBadgeIsReady: Bool {
@@ -220,54 +228,52 @@ final class StudioViewModel: ObservableObject {
     var shouldSurfaceCreationNotice: Bool {
         guard let notice, !notice.isEmpty, !isCreationBusy else { return false }
         return batches.first(where: { $0.id == activeBatchID })?.state == .failed
-            || notice.contains("失败")
-            || notice.contains("取消")
-            || notice.contains("停止")
+            || ["失败", "取消", "停止", "failed", "canceled", "stopped"].contains(where: notice.localizedCaseInsensitiveContains)
     }
     var hasActiveResults: Bool { isCreationBusy || !activeCandidates.isEmpty }
     var generationBlockReason: String? {
         if !canGenerate {
-            return "还没连接图片模型。点「先用演示出图」可以立刻走完流程；真实出图去设置里填 API Key。"
+            return L10n.tr("还没连接图片模型。点「先用演示出图」可以立刻走完流程；真实出图去设置里填 API Key。")
         }
         let hasInput = !draft.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if isBlankSeriesSession && !hasInput {
-            return "先在下面写下想看的画面，再点出图。"
+            return L10n.tr("先在下面写下想看的画面，再点出图。")
         }
         return nil
     }
     var generateActionTitle: String {
-        if !canGenerate { return "先用演示出图" }
+        if !canGenerate { return L10n.tr("先用演示出图") }
         if isBlankSeriesSession && draft.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "先写下画面"
+            return L10n.tr("先写下画面")
         }
-        if !displayedReferencePaths.isEmpty { return "再出 \(batchSize) 张" }
-        return "出 \(batchSize) 张图"
+        if !displayedReferencePaths.isEmpty { return L10n.tr("再出 \(batchSize) 张") }
+        return L10n.tr("出 \(batchSize) 张图")
     }
     var stopActionTitle: String {
-        if isOptimizingPrompt { return "停止构思" }
-        if generationTotal > 0 { return "停止出图 \(generationIndex)/\(generationTotal)" }
-        return "停止出图"
+        if isOptimizingPrompt { return L10n.tr("停止构思") }
+        if generationTotal > 0 { return L10n.tr("停止出图 \(generationIndex)/\(generationTotal)") }
+        return L10n.tr("停止出图")
     }
     var continueActionTitle: String {
-        selectedCandidate == nil ? "再出一组" : "按这张再出一组"
+        selectedCandidate == nil ? L10n.tr("再出一组") : L10n.tr("按这张再出一组")
     }
     var creationStageTitle: String {
-        if isOptimizingPrompt { return "正在想画面" }
-        if isGenerating { return generationTotal > 0 ? "正在出图 \(generationIndex)/\(generationTotal)" : "正在出图" }
-        if !activeCandidates.isEmpty { return "选出一张" }
-        if isBlankSeriesSession { return "新系列" }
-        return "壁纸会出现在这里"
+        if isOptimizingPrompt { return L10n.tr("正在想画面") }
+        if isGenerating { return generationTotal > 0 ? L10n.tr("正在出图 \(generationIndex)/\(generationTotal)") : L10n.tr("正在出图") }
+        if !activeCandidates.isEmpty { return L10n.tr("选出一张") }
+        if isBlankSeriesSession { return L10n.tr("新系列") }
+        return L10n.tr("壁纸会出现在这里")
     }
     var creationStageDetail: String {
-        if isOptimizingPrompt { return "先写构图。现在的桌面不会被换掉。" }
-        if isGenerating { return "图会一张张出来。你没点「设为壁纸」之前，桌面不变。" }
+        if isOptimizingPrompt { return L10n.tr("先写构图。现在的桌面不会被换掉。") }
+        if isGenerating { return L10n.tr("图会一张张出来。你没点「设为壁纸」之前，桌面不变。") }
         if !activeCandidates.isEmpty {
-            return "点小图或大图两侧箭头切换；←→ 键也可。再点「设为壁纸」。双击大图也可设壁纸。"
+            return L10n.tr("点小图或大图两侧箭头切换；←→ 键也可。再点「设为壁纸」。双击大图也可设壁纸。")
         }
         if isBlankSeriesSession {
-            return "1. 在下面写下想看的画面，例如：温暖的春天的悠闲午后\n2. 点出图\n3. 喜欢的再点设为壁纸。桌面不会自己换。"
+            return L10n.tr("1. 在下面写下想看的画面，例如：温暖的春天的悠闲午后\n2. 点出图\n3. 喜欢的再点设为壁纸。桌面不会自己换。")
         }
-        return "点左边系列继续出，或点「新系列」另写一句。桌面不会自己换。"
+        return L10n.tr("点左边系列继续出，或点「新系列」另写一句。桌面不会自己换。")
     }
 
     var isBlankSeriesSession: Bool {
@@ -292,44 +298,44 @@ final class StudioViewModel: ObservableObject {
         return taskOnes + rest
     }
     var composerSupportText: String {
-        if isCreationBusy { return "可以按停止，已完成的图会留下来" }
-        if !canGenerate { return "未连接模型，这次用离线演示" }
-        if promptAgentRouting.enabled && promptAPIKeyConfigured { return "每张都会单独写成不同画面再出图" }
-        return "每张先按内置纯场景改写，互不相同"
+        if isCreationBusy { return L10n.tr("可以按停止，已完成的图会留下来") }
+        if !canGenerate { return L10n.tr("未连接模型，这次用离线演示") }
+        if promptAgentRouting.enabled && promptAPIKeyConfigured { return L10n.tr("每张都会单独写成不同画面再出图") }
+        return L10n.tr("每张先按内置纯场景改写，互不相同")
     }
     var modelStatusTitle: String {
-        guard let config = activeModelConfiguration else { return "未选择文生图模型" }
-        if config.provider == .demo { return "离线演示已就绪" }
-        if !apiKeyConfigured { return "需要配置 API Key" }
-        if let route = verifiedImageRoute, route.matches(config) { return "出图通路已验证" }
-        return "API Key 已保存，尚未验证（点「保存并测试」）"
+        guard let config = activeModelConfiguration else { return L10n.tr("未选择文生图模型") }
+        if config.provider == .demo { return L10n.tr("离线演示已就绪") }
+        if !apiKeyConfigured { return L10n.tr("需要配置 API Key") }
+        if let route = verifiedImageRoute, route.matches(config) { return L10n.tr("出图通路已验证") }
+        return L10n.tr("API Key 已保存，尚未验证（点「保存并测试」）")
     }
     var modelStatusDetail: String {
-        guard let config = activeModelConfiguration else { return "进入模型与自动化，添加一个 Provider。" }
+        guard let config = activeModelConfiguration else { return L10n.tr("进入模型与自动化，添加一个 Provider。") }
         return "\(config.name) · \(config.model) · \(config.size.rawValue) · \(config.quality.rawValue)"
     }
     var imageModelCaption: String {
         if let route = verifiedImageRoute {
-            return "出图通路：\(route.model) → \(route.host)/images/generations"
+            return L10n.tr("出图通路：\(route.model) → \(route.host)/images/generations")
         }
-        guard let config = activeModelConfiguration else { return "还没选图片模型" }
-        if config.provider == .demo { return "离线演示" }
-        return "出图通路未锁定：\(config.model)（先保存并测试）"
+        guard let config = activeModelConfiguration else { return L10n.tr("还没选图片模型") }
+        if config.provider == .demo { return L10n.tr("离线演示") }
+        return L10n.tr("出图通路未锁定：\(config.model)（先保存并测试）")
     }
 
     var textModelCaption: String {
-        guard promptAgentRouting.enabled else { return "文本通路：关着，用内置构图" }
+        guard promptAgentRouting.enabled else { return L10n.tr("文本通路：关着，用内置构图") }
         switch promptAgentRouting.mode {
         case .fixed:
             guard let ref = promptAgentRouting.activeRef,
                   let config = promptModelConfigurations.first(where: { $0.id == ref.configurationID }) else {
-                return "文本通路：未选模型"
+                return L10n.tr("文本通路：未选模型")
             }
             let host = URL(string: config.baseURL)?.host ?? config.baseURL
-            return "文本通路：\(config.selectionLabel(forModel: ref.model)) → \(host)/\(config.endpointPath)"
+            return L10n.tr("文本通路：\(config.selectionLabel(forModel: ref.model)) → \(host)/\(config.endpointPath)")
         case .random:
             let count = promptAgentRouting.eligibleRefs.count
-            return "文本通路：随机（\(count) 个候选）"
+            return L10n.tr("文本通路：随机（\(count) 个候选）")
         }
     }
 
@@ -354,11 +360,11 @@ final class StudioViewModel: ObservableObject {
         guard let config = activeModelConfiguration, config.provider != .demo else { return nil }
         guard let route = verifiedImageRoute else { return nil }
         if route.matches(config) { return nil }
-        return "出图通路没对齐。测过的是 \(route.model) @ \(route.host)，现在要用的是 \(config.model) @ \(ImageRoute.from(config).host)。请再点一次文生图的「保存并测试」。"
+        return L10n.tr("出图通路没对齐。测过的是 \(route.model) @ \(route.host)，现在要用的是 \(config.model) @ \(ImageRoute.from(config).host)。请再点一次文生图的「保存并测试」。")
     }
 
     var generationEndpointPreview: String {
-        guard let config = activeModelConfiguration, config.provider != .demo else { return "本地生成，不发送网络请求" }
+        guard let config = activeModelConfiguration, config.provider != .demo else { return L10n.tr("本地生成，不发送网络请求") }
         return config.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/images/generations"
     }
     var promptEndpointPreview: String {
@@ -426,18 +432,18 @@ final class StudioViewModel: ObservableObject {
         if on { activeCollectionID = nil }
     }
 
-    static func artworkTimeCaption(_ date: Date, now: Date = Date()) -> String {
+    static func artworkTimeCaption(_ date: Date, now: Date = Date(), locale: Locale = L10n.locale) -> String {
         let calendar = Calendar.current
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.locale = locale
         if calendar.isDateInToday(date) {
-            formatter.dateFormat = "今天 HH:mm"
+            formatter.dateFormat = locale.language.languageCode?.identifier == "zh" ? "今天 HH:mm" : "'Today' HH:mm"
         } else if calendar.isDateInYesterday(date) {
-            formatter.dateFormat = "昨天 HH:mm"
+            formatter.dateFormat = locale.language.languageCode?.identifier == "zh" ? "昨天 HH:mm" : "'Yesterday' HH:mm"
         } else if calendar.component(.year, from: date) == calendar.component(.year, from: now) {
-            formatter.dateFormat = "M月d日 HH:mm"
+            formatter.setLocalizedDateFormatFromTemplate("MMMd HHmm")
         } else {
-            formatter.dateFormat = "yyyy年M月d日 HH:mm"
+            formatter.setLocalizedDateFormatFromTemplate("yMMMd HHmm")
         }
         return formatter.string(from: date)
     }
@@ -451,7 +457,7 @@ final class StudioViewModel: ObservableObject {
     }
 
     func wallpaperTargetLabel(for display: DisplayProfile) -> String {
-        "只贴到：\(display.name) · \(display.width)×\(display.height)"
+        L10n.tr("只贴到：\(display.name) · \(display.width)×\(display.height)")
     }
 
     func refreshDisplays() {
@@ -494,11 +500,11 @@ final class StudioViewModel: ObservableObject {
     func optimizePromptWithAI() {
         guard !isOptimizingPrompt else { return }
         guard promptAgentRouting.enabled else {
-            promptAgentNotice = "先在“模型与自动化”启用 Prompt Agent。"
+            promptAgentNotice = L10n.tr("先在“模型与自动化”启用 Prompt Agent。")
             return
         }
         isOptimizingPrompt = true
-        promptAgentNotice = "正在由文本模型重构画面语言…"
+        promptAgentNotice = L10n.tr("正在由文本模型重构画面语言…")
         let context = promptEnhancementContext()
         promptOptimizationTask = Task {
             do {
@@ -506,7 +512,7 @@ final class StudioViewModel: ObservableObject {
                     throw MusepaperError.missingAPIKey
                 }
                 let modelName = lastUsedPromptModelName ?? agent.configuration.model
-                promptAgentNotice = "正在由 \(modelName) 重构画面语言…"
+                promptAgentNotice = L10n.tr("正在由 \(modelName) 重构画面语言…")
                 let core = context.coreKeywords.isEmpty ? context.rawPrompt : context.coreKeywords
                 finalPrompt = try await agent.enhance(context)
                 let englishCore = composer.spokenHint(core)
@@ -515,8 +521,8 @@ final class StudioViewModel: ObservableObject {
                         || composer.preservesCore(englishCore, in: finalPrompt)
                         || (!composer.containsCJK(finalPrompt) && finalPrompt.count >= 12))
                 promptAgentNotice = promptWasAIOptimized
-                    ? "已写成能看见的画面（\(modelName)）。出图时按这段走。"
-                    : "已写出画面，请看一眼是否还是你要的主题。"
+                    ? L10n.tr("已写成能看见的画面（\(modelName)）。出图时按这段走。")
+                    : L10n.tr("已写出画面，请看一眼是否还是你要的主题。")
             } catch { promptAgentNotice = error.localizedDescription }
             isOptimizingPrompt = false
             promptOptimizationTask = nil
@@ -527,7 +533,7 @@ final class StudioViewModel: ObservableObject {
         promptOptimizationTask?.cancel()
         promptOptimizationTask = nil
         isOptimizingPrompt = false
-        promptAgentNotice = "已取消 Prompt 优化。"
+        promptAgentNotice = L10n.tr("已取消 Prompt 优化。")
         if let id = preparingBatchID { abandonPreparingBatch(id) }
     }
 
@@ -588,7 +594,7 @@ final class StudioViewModel: ObservableObject {
         selectPromptModelConfiguration(config.id)
         allowPersistingModelConfigurations = true
         persist()
-        promptAgentNotice = "已新增厂商连接。在模型列表里填多个模型名，共用一把 AK。"
+        promptAgentNotice = L10n.tr("已新增厂商连接。在模型列表里填多个模型名，共用一把 AK。")
     }
 
     func setActivePromptModelsFromMultilineText(_ text: String) {
@@ -600,7 +606,7 @@ final class StudioViewModel: ObservableObject {
             .filter { !$0.isEmpty }
         let next = PromptModelConfiguration.normalizedModelList(parsed)
         guard !next.isEmpty else {
-            promptAgentNotice = "至少保留一个模型名。"
+            promptAgentNotice = L10n.tr("至少保留一个模型名。")
             syncPromptModelsTextDraft()
             return
         }
@@ -644,7 +650,7 @@ final class StudioViewModel: ObservableObject {
     func deleteActivePromptModelConfiguration() {
         guard let id = activePromptModelConfiguration?.id else { return }
         guard promptModelConfigurations.count > 1 else {
-            promptAgentNotice = "至少保留一个厂商连接。"
+            promptAgentNotice = L10n.tr("至少保留一个厂商连接。")
             return
         }
         promptModelConfigurations.removeAll { $0.id == id }
@@ -703,8 +709,8 @@ final class StudioViewModel: ObservableObject {
                 persist()
                 let shared = promptConfigsSharingCredential(with: current).count
                 promptAgentNotice = shared > 1
-                    ? "文本模型已保存；同一 Base URL 下 \(shared) 个模型共用这把 AK。"
-                    : "文本模型已保存；AK 位于本机私有凭据文件。"
+                    ? L10n.tr("文本模型已保存；同一 Base URL 下 \(shared) 个模型共用这把 AK。")
+                    : L10n.tr("文本模型已保存；AK 位于本机私有凭据文件。")
             } catch { promptAgentNotice = error.localizedDescription }
         }
     }
@@ -716,7 +722,7 @@ final class StudioViewModel: ObservableObject {
         catch { promptAgentNotice = error.localizedDescription; return }
         updateActivePromptModelConfiguration(current)
         isTestingPromptModel = true
-        promptAgentNotice = "正在保存并测试 \(current.model)…"
+        promptAgentNotice = L10n.tr("正在保存并测试 \(current.model)…")
         allowPersistingModelConfigurations = true
         Task {
             do {
@@ -733,7 +739,7 @@ final class StudioViewModel: ObservableObject {
                 await refreshPromptKeyStatus()
                 promptAgentVerified = true
                 persist()
-                promptAgentNotice = "连接成功：\(current.model) 可以优化 Prompt（\(current.apiFormat.rawValue)）。"
+                promptAgentNotice = L10n.tr("连接成功：\(current.model) 可以优化 Prompt（\(current.apiFormat.rawValue)）。")
             } catch {
                 promptAgentVerified = false
                 promptAgentNotice = error.localizedDescription
@@ -755,8 +761,8 @@ final class StudioViewModel: ObservableObject {
                 persist()
                 let shared = promptConfigsSharingCredential(with: current).count
                 promptAgentNotice = shared > 1
-                    ? "已复用图片 Provider 的 Key，并同步到同 Base URL 的 \(shared) 个文本模型。"
-                    : "已安全复用当前图片 Provider 的 Key。"
+                    ? L10n.tr("已复用图片 Provider 的 Key，并同步到同 Base URL 的 \(shared) 个文本模型。")
+                    : L10n.tr("已安全复用当前图片 Provider 的 Key。")
             } catch { promptAgentNotice = error.localizedDescription }
         }
     }
@@ -770,8 +776,8 @@ final class StudioViewModel: ObservableObject {
                 await refreshPromptKeyStatus()
                 let shared = promptConfigsSharingCredential(with: current).count
                 promptAgentNotice = shared > 1
-                    ? "已删除同 Base URL 下 \(shared) 个文本模型共用的 AK。"
-                    : "文本模型 AK 已从本机凭据删除。"
+                    ? L10n.tr("已删除同 Base URL 下 \(shared) 个文本模型共用的 AK。")
+                    : L10n.tr("文本模型 AK 已从本机凭据删除。")
             } catch { promptAgentNotice = error.localizedDescription }
         }
     }
@@ -980,19 +986,19 @@ final class StudioViewModel: ObservableObject {
             let next = ScheduleService.nextFireCaption(
                 intervalSeconds: channel.resolvedScheduleIntervalSeconds, lastProducedAt: last
             )
-            return "下次 \(next)"
+            return L10n.tr("下次 \(next)")
         }
-        return "打开后按间隔自动出图，只进作品库。"
+        return L10n.tr("打开后按间隔自动出图，只进作品库。")
     }
 
     func scheduleBadge(for channel: InspirationChannel) -> String {
-        channel.resolvedScheduleEnabled ? "自动" : "定时"
+        channel.resolvedScheduleEnabled ? L10n.tr("自动") : L10n.tr("定时")
     }
 
     func useOfflineDemo() {
         guard let demo = modelConfigurations.first(where: { $0.provider == .demo }) else { return }
         selectModelConfiguration(demo.id)
-        notice = "已切换到离线演示。这次不花额度，用来走完生成和选图。"
+        notice = L10n.tr("已切换到离线演示。这次不花额度，用来走完生成和选图。")
     }
 
     func requestGeneration() {
@@ -1000,7 +1006,7 @@ final class StudioViewModel: ObservableObject {
         if !canGenerate { useOfflineDemo() }
         draftInputDidChange()
         if creatingTaskFromComposer, draft.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            notice = "先在下面写下想看的画面，再点出图。"
+            notice = L10n.tr("先在下面写下想看的画面，再点出图。")
             shouldFocusComposer = true
             return
         }
@@ -1041,12 +1047,12 @@ final class StudioViewModel: ObservableObject {
         showingChannelEditor = false
         channelBeingEdited = nil
         selectChannel(channel.id)
-        notice = "灵感词就在上面输入框，改了会自动记住。"
+        notice = L10n.tr("灵感词就在上面输入框，改了会自动记住。")
     }
 
     func expandSeriesBlueprint(_ idea: String) async throws -> WallpaperBlueprintSuggestion {
         guard promptAgentRouting.enabled else {
-            throw MusepaperError.invalidConfiguration("请先启用 Prompt Agent")
+            throw MusepaperError.invalidConfiguration(L10n.tr("请先启用 Prompt Agent"))
         }
         isExpandingSeries = true
         defer { isExpandingSeries = false }
@@ -1055,7 +1061,7 @@ final class StudioViewModel: ObservableObject {
         }
         let suggestion = try await agent.expandBlueprint(idea: idea)
         let modelName = lastUsedPromptModelName ?? agent.configuration.model
-        seriesNotice = "AI 已拆解不可变内核与可变维度（\(modelName)）。"
+        seriesNotice = L10n.tr("AI 已拆解不可变内核与可变维度（\(modelName)）。")
         return suggestion
     }
 
@@ -1115,13 +1121,13 @@ final class StudioViewModel: ObservableObject {
     func regenerateSelectedCandidate() {
         guard !isCreationBusy else { return }
         guard let record = selectedCandidate else {
-            notice = "请先点选一张要重出的图。"
+            notice = L10n.tr("请先点选一张要重出的图。")
             return
         }
         let recordID = record.id
         let finalImagePrompt = record.request.resolvedPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !finalImagePrompt.isEmpty else {
-            notice = "这张图没有可用的最终提示词。"
+            notice = L10n.tr("这张图没有可用的最终提示词。")
             return
         }
         let oldPath = record.imagePath
@@ -1134,7 +1140,7 @@ final class StudioViewModel: ObservableObject {
         isGenerating = true
         generationTotal = 1
         generationIndex = 0
-        notice = "正在用最终提示词重新生成…"
+        notice = L10n.tr("正在用最终提示词重新生成…")
         generationTask = Task {
             defer {
                 isGenerating = false
@@ -1144,7 +1150,7 @@ final class StudioViewModel: ObservableObject {
             }
             do {
                 guard var config = activeModelConfiguration else {
-                    throw MusepaperError.invalidConfiguration("没有活动模型配置")
+                    throw MusepaperError.invalidConfiguration(L10n.tr("没有活动模型配置"))
                 }
                 if let route = verifiedImageRoute {
                     config.baseURL = route.baseURL
@@ -1159,7 +1165,7 @@ final class StudioViewModel: ObservableObject {
                 let urls = try await pipeline.run(request, outputDirectory: generationOutputDirectory)
                 guard let url = urls.first else { throw MusepaperError.missingImage }
                 guard let index = records.firstIndex(where: { $0.id == recordID }) else {
-                    notice = "原图已不在列表里，重出结果未替换。"
+                    notice = L10n.tr("原图已不在列表里，重出结果未替换。")
                     return
                 }
                 records[index].request.resolvedPrompt = finalImagePrompt
@@ -1191,11 +1197,11 @@ final class StudioViewModel: ObservableObject {
                 persist()
                 refreshDiskLibraryStats()
                 refreshDesktopControls()
-                notice = "已用最终提示词重出，并替换了这张图。"
+                notice = L10n.tr("已用最终提示词重出，并替换了这张图。")
             } catch is CancellationError {
-                notice = "已取消重新生成。"
+                notice = L10n.tr("已取消重新生成。")
             } catch {
-                notice = "重新生成失败：\(error.localizedDescription)"
+                notice = L10n.tr("重新生成失败：\(error.localizedDescription)")
             }
         }
     }
@@ -1282,8 +1288,8 @@ final class StudioViewModel: ObservableObject {
         finalPrompt = prompt
         promptWasAIOptimized = !prompt.isEmpty
         notice = prompt.isEmpty
-            ? "已用这张当起点。再出一组会按它继续。"
-            : "已载入这张的最终 Prompt。点生成会按它再出。"
+            ? L10n.tr("已用这张当起点。再出一组会按它继续。")
+            : L10n.tr("已载入这张的最终 Prompt。点生成会按它再出。")
         // Keep loaded Prompt — do not rebuild from draft.
     }
 
@@ -1319,7 +1325,7 @@ final class StudioViewModel: ObservableObject {
     }
 
     func imageModelPickerTitle(for configuration: ModelConfiguration) -> String {
-        if configuration.provider == .demo { return "离线演示" }
+        if configuration.provider == .demo { return L10n.tr("离线演示") }
         let name = configuration.name.trimmingCharacters(in: .whitespacesAndNewlines)
         let model = configuration.model.trimmingCharacters(in: .whitespacesAndNewlines)
         if name.isEmpty { return model }
@@ -1372,7 +1378,7 @@ final class StudioViewModel: ObservableObject {
                 }
                 await refreshKeyStatus()
                 persist()
-                connectionNotice = config.provider == .demo ? "离线演示配置已保存。" : "配置已保存；Key 在，但还没验证出图。请点「保存并测试」。"
+                connectionNotice = config.provider == .demo ? L10n.tr("离线演示配置已保存。") : L10n.tr("配置已保存；Key 在，但还没验证出图。请点「保存并测试」。")
             } catch { connectionNotice = error.localizedDescription }
         }
     }
@@ -1385,7 +1391,7 @@ final class StudioViewModel: ObservableObject {
                 apiKeyDraft = ""
                 verifiedConfigurationID = nil
                 await refreshKeyStatus()
-                connectionNotice = "AK 已从本机凭据删除。"
+                connectionNotice = L10n.tr("AK 已从本机凭据删除。")
             } catch { connectionNotice = error.localizedDescription }
         }
     }
@@ -1395,7 +1401,7 @@ final class StudioViewModel: ObservableObject {
         do { _ = try config.validated() }
         catch { connectionNotice = error.localizedDescription; return }
         isTestingConnection = true
-        connectionNotice = "正在用图片模型 \(config.model) 真正试出一张…"
+        connectionNotice = L10n.tr("正在用图片模型 \(config.model) 真正试出一张…")
         allowPersistingModelConfigurations = true
         Task {
             do {
@@ -1406,14 +1412,14 @@ final class StudioViewModel: ObservableObject {
                 }
                 let stored = try await credentials.read(for: config.id)
                 let fingerprint = OpenAIImageProvider.fingerprint(stored ?? "")
-                connectionNotice = "令牌 \(fingerprint)；正在用 \(config.model) 试出一张…"
+                connectionNotice = L10n.tr("令牌 \(fingerprint)；正在用 \(config.model) 试出一张…")
                 let provider = try providerFactory.make(configuration: config, apiKey: stored)
                 try await provider.testConnection()
                 await refreshKeyStatus()
                 verifiedConfigurationID = config.id
                 verifiedImageRoute = ImageRoute.from(config)
                 persist()
-                connectionNotice = "连接成功：出图测试通过。\(config.model) → \(ImageRoute.from(config).generationsURL)（令牌 \(fingerprint)；尺寸 \(OpenAIImageProvider.normalizedSize(config.size, dialect: OpenAIImageProvider.imageAPIDialect(baseURL: config.baseURL)))）"
+                connectionNotice = L10n.tr("连接成功：出图测试通过。\(config.model) → \(ImageRoute.from(config).generationsURL)（令牌 \(fingerprint)；尺寸 \(OpenAIImageProvider.normalizedSize(config.size, dialect: OpenAIImageProvider.imageAPIDialect(baseURL: config.baseURL), model: config.model))）")
             } catch {
                 clearImageVerification(notice: error.localizedDescription)
             }
@@ -1465,12 +1471,12 @@ final class StudioViewModel: ObservableObject {
         generationTotal = InspirationChannel.clampedCount(batchSize)
         generationIndex = 0
         notice = reuseLoadedPrompt
-            ? "正在按已载入的最终 Prompt 再出一组。"
+            ? L10n.tr("正在按已载入的最终 Prompt 再出一组。")
             : (canOptimizePrompt
-                ? "正在为每一张单独设计不同画面。"
+                ? L10n.tr("正在为每一张单独设计不同画面。")
             : (promptAgentRouting.enabled
-                ? "文字模型还没连上，已改用内置纯场景改写，每张都会不同。"
-                : "正在按内置纯场景改写生成这一组，每张都会不同。"))
+                ? L10n.tr("文字模型还没连上，已改用内置纯场景改写，每张都会不同。")
+                : L10n.tr("正在按内置纯场景改写生成这一组，每张都会不同。")))
         startGeneration(
             prompt: fallbackPrompt,
             trigger: .manual,
@@ -1496,7 +1502,7 @@ final class StudioViewModel: ObservableObject {
             return
         }
         if let modelName = activeModelConfiguration?.model, OpenAIImageProvider.looksLikeChatModel(modelName) {
-            notice = "「\(modelName)」是对话模型，出图会 404。去设置把「图片模型」改成文生图模型。"
+            notice = L10n.tr("「\(modelName)」是对话模型，出图会 404。去设置把「图片模型」改成文生图模型。")
             return
         }
         guard !isGenerating else {
@@ -1525,7 +1531,11 @@ final class StudioViewModel: ObservableObject {
         let coreForRecord = composer.userCore(idea: ideaForRequest, channel: seriesForCore)
         let request = GenerationRequest(
             id: UUID(), rawInput: ideaForRequest, resolvedPrompt: providerPrompt,
-            negativePrompt: composer.negativePrompt(draft: draft, channel: seriesForNegative),
+            negativePrompt: composer.negativePrompt(
+                draft: draft,
+                channel: seriesForNegative,
+                model: activeModelConfiguration?.model ?? ""
+            ),
             display: selectedDisplay, createdAt: Date(),
             referenceImagePaths: refs.isEmpty ? nil : refs, batchID: batchID,
             seriesID: resolvedSeriesID, variationSeed: variationSeed,
@@ -1549,7 +1559,7 @@ final class StudioViewModel: ObservableObject {
             var candidateIDs: [UUID] = []
             do {
                 updateBatch(batchID, state: .generating)
-                guard var config = activeModelConfiguration else { throw MusepaperError.invalidConfiguration("没有活动模型配置") }
+                guard var config = activeModelConfiguration else { throw MusepaperError.invalidConfiguration(L10n.tr("没有活动模型配置")) }
                 if let route = verifiedImageRoute {
                     config.baseURL = route.baseURL
                     config.model = route.model
@@ -1579,6 +1589,9 @@ final class StudioViewModel: ObservableObject {
                 )
                 let promptAgentEnabled = !preferExactPrompt
                 let sharedAgent = promptAgentEnabled ? await makePromptAgentIfAvailable() : nil
+                if ImagePromptDialect.infer(from: config.model) == .llada, sharedAgent != nil {
+                    promptAgentNotice = L10n.tr("LLaDA Agent 只写短照片句，中文主题原样留下。")
+                }
                 let textGate = AdaptiveConcurrencyGate(
                     initial: min(4, targetCount),
                     minimum: 1,
@@ -1605,6 +1618,7 @@ final class StudioViewModel: ObservableObject {
                         let exactPrompt = preferExactPrompt
                         let providerPromptSnapshot = providerPrompt
                         let seed = seedBase
+                        let imageModelName = config.model
                         group.addTask {
                             try await Self.buildParallelCandidate(
                                 candidateIndex: candidateIndex,
@@ -1618,6 +1632,7 @@ final class StudioViewModel: ObservableObject {
                                 preferExactPrompt: exactPrompt,
                                 providerPrompt: providerPromptSnapshot,
                                 seedBase: seed,
+                                imageModel: imageModelName,
                                 sharedAgent: sharedAgent,
                                 textGate: textGate,
                                 imageGate: imageGate,
@@ -1648,7 +1663,12 @@ final class StudioViewModel: ObservableObject {
                         generationIndex = candidateIDs.count
                         selectedCandidateID = record.id
                         ArtworkPromptSidecar.write(
-                            finalPrompt: record.request.resolvedPrompt,
+                            finalPrompt: PromptComposer().imageModelPrompt(
+                                record.request.resolvedPrompt,
+                                core: themeSource,
+                                seed: record.request.variationSeed ?? 0,
+                                model: config.model
+                            ),
                             rawInput: record.request.rawInput,
                             negativePrompt: record.request.negativePrompt,
                             coreKeywords: themeSource,
@@ -1672,20 +1692,20 @@ final class StudioViewModel: ObservableObject {
                 persist()
                 await enrichTags(candidateIDs, task: series)
                 notice = candidateIDs.count < targetCount
-                    ? "本批完成 \(candidateIDs.count)/\(targetCount)\(firstFailure.map { "，其余失败：\($0)" } ?? "")"
+                    ? L10n.tr("本批完成 \(candidateIDs.count)/\(targetCount)\(firstFailure.map { L10n.tr("，其余失败：\($0)") } ?? "")")
                     : nil
                 markSeriesProgress(seriesID: resolvedSeriesID)
                 if trigger == .scheduled, settings.scheduledApplyMode == .applyFirst { applySelectedCandidate() }
             } catch is CancellationError {
                 updateBatch(batchID, state: candidateIDs.isEmpty ? .cancelled : .ready, error: candidateIDs.isEmpty ? nil : "生成已取消，保留已完成的 \(candidateIDs.count) 张")
                 isGenerating = false
-                notice = candidateIDs.isEmpty ? "已取消本次生成，没有替换壁纸。" : "已停止继续生成，保留已完成的 \(candidateIDs.count) 张供选择。"
+                notice = candidateIDs.isEmpty ? L10n.tr("已取消本次生成，没有替换壁纸。") : L10n.tr("已停止继续生成，保留已完成的 \(candidateIDs.count) 张供选择。")
             } catch {
                 updateBatch(batchID, state: candidateIDs.isEmpty ? .failed : .ready, error: error.localizedDescription)
                 isGenerating = false
                 notice = candidateIDs.isEmpty
                     ? error.localizedDescription
-                    : "本批只完成 \(candidateIDs.count) 张，其余失败：\(error.localizedDescription)"
+                    : L10n.tr("本批只完成 \(candidateIDs.count) 张，其余失败：\(error.localizedDescription)")
             }
             preparingBatchID = nil
             drainScheduledQueue()
@@ -1711,6 +1731,7 @@ final class StudioViewModel: ObservableObject {
         preferExactPrompt: Bool,
         providerPrompt: String,
         seedBase: Int,
+        imageModel: String,
         sharedAgent: PromptAgent?,
         textGate: AdaptiveConcurrencyGate,
         imageGate: AdaptiveConcurrencyGate,
@@ -1747,7 +1768,8 @@ final class StudioViewModel: ObservableObject {
                         display: display,
                         seed: seedBase + candidateIndex,
                         dimensionCombo: combo.visualPhrase,
-                        referenceImageCount: baseRequest.referenceImagePaths?.count ?? 0
+                        referenceImageCount: baseRequest.referenceImagePaths?.count ?? 0,
+                        imageModel: imageModel
                     )
                     let enhanced = try await textGate.runWithPressureRetry {
                         try await promptAgent.enhance(context)
@@ -1828,7 +1850,7 @@ final class StudioViewModel: ObservableObject {
         if !pendingScheduledTaskIDs.contains(id) {
             pendingScheduledTaskIDs.append(id)
         }
-        notice = "当前这组还在生成，到点的任务已排队，不会丢掉。"
+        notice = L10n.tr("当前这组还在生成，到点的任务已排队，不会丢掉。")
     }
 
     private func drainScheduledQueue() {
@@ -1922,7 +1944,7 @@ final class StudioViewModel: ObservableObject {
 
     func applySelectedCandidate() {
         guard let record = selectedCandidate, let path = record.imagePath else {
-            notice = "请先在这一批候选中选中一张壁纸。"; return
+            notice = L10n.tr("请先在这一批候选中选中一张壁纸。"); return
         }
         if let index = batches.firstIndex(where: { $0.id == activeBatchID }) {
             batches[index].selectedRecordID = record.id
@@ -1944,7 +1966,7 @@ final class StudioViewModel: ObservableObject {
                     paths: snapshot.previousWallpaperPaths,
                     transition: settings.wallpaperTransition ?? WallpaperTransition.none
                 )
-                notice = "已恢复替换前的壁纸。"
+                notice = L10n.tr("已恢复替换前的壁纸。")
             } catch {
                 notice = error.localizedDescription
             }
@@ -2051,14 +2073,14 @@ final class StudioViewModel: ObservableObject {
                 let screens = Set(job.assignments.map(\.displayID)).count
                 let images = Set(job.assignments.map(\.recordID)).count
                 if screens > 1, images > 1 {
-                    notice = "轮播“\(name)”已为 \(screens) 块屏换上不同壁纸。"
+                    notice = L10n.tr("轮播“\(name)”已为 \(screens) 块屏换上不同壁纸。")
                 } else if screens > 1 {
-                    notice = "轮播“\(name)”已更新 \(screens) 块屏。"
+                    notice = L10n.tr("轮播“\(name)”已更新 \(screens) 块屏。")
                 } else {
-                    notice = "轮播“\(name)”已切换到下一张。"
+                    notice = L10n.tr("轮播“\(name)”已切换到下一张。")
                 }
             } else {
-                notice = "桌面已换好。"
+                notice = L10n.tr("桌面已换好。")
             }
         } catch {
             notice = error.localizedDescription
@@ -2075,7 +2097,7 @@ final class StudioViewModel: ObservableObject {
     func likeCurrentDesktopWallpaper(displayID: String? = nil) {
         let screenID = resolvedDesktopDisplayID(displayID)
         guard let record = resolveWallpaperRecord(on: screenID) else {
-            notice = "这块屏上还不是 Musepaper 作品，没法标记喜欢。"
+            notice = L10n.tr("这块屏上还不是 Musepaper 作品，没法标记喜欢。")
             return
         }
         guard let index = records.firstIndex(where: { $0.id == record.id }) else { return }
@@ -2085,11 +2107,11 @@ final class StudioViewModel: ObservableObject {
         if alreadyLiked {
             records[index].isFavorite = false
             tags.removeAll { $0 == tag }
-            notice = "已取消喜欢这块屏的壁纸。"
+            notice = L10n.tr("已取消喜欢这块屏的壁纸。")
         } else {
             records[index].isFavorite = true
             if !tags.contains(tag) { tags.insert(tag, at: 0) }
-            notice = "已喜欢这块屏的壁纸，并加上 #\(tag)。"
+            notice = L10n.tr("已喜欢这块屏的壁纸，并加上 #\(tag)。")
         }
         records[index].tags = tags
         records[index].updatedAt = Date()
@@ -2106,14 +2128,14 @@ final class StudioViewModel: ObservableObject {
         lastDesktopControlAt = now
         let screenID = resolvedDesktopDisplayID(displayID)
         guard let record = resolveWallpaperRecord(on: screenID) else {
-            notice = "这块屏上还不是 Musepaper 作品，没法删除。"
+            notice = L10n.tr("这块屏上还不是 Musepaper 作品，没法删除。")
             return
         }
         let doomedID = record.id
         moveToTrash(doomedID, announce: false)
         if let running = owningPlaylist(for: screenID) {
             playPlaylistNow(running.id, excluding: doomedID, displayIDs: [screenID])
-            notice = "已把这块屏的壁纸移入回收箱，并换上下一张。"
+            notice = L10n.tr("已把这块屏的壁纸移入回收箱，并换上下一张。")
             return
         }
         if let advance = prepareLibraryAdvance(afterRemoving: doomedID) {
@@ -2123,9 +2145,9 @@ final class StudioViewModel: ObservableObject {
                 adopt: false,
                 displayIDs: [screenID]
             )
-            notice = "已把这块屏的壁纸移入回收箱，并换上下一张。"
+            notice = L10n.tr("已把这块屏的壁纸移入回收箱，并换上下一张。")
         } else {
-            notice = "已把这块屏的壁纸移入回收箱。暂时没有可换的下一张了。"
+            notice = L10n.tr("已把这块屏的壁纸移入回收箱。暂时没有可换的下一张了。")
         }
     }
 
@@ -2153,24 +2175,44 @@ final class StudioViewModel: ObservableObject {
 
     private func pickPlaylistSuccessor(
         from pool: [GenerationRecord],
-        order: PlaylistOrder,
-        currentID: UUID
+        playlist: inout WallpaperPlaylist,
+        currentID: UUID?,
+        avoiding usedIDs: Set<UUID>
     ) -> GenerationRecord {
-        switch order {
+        switch playlist.order {
         case .shuffle:
-            return pool.filter { $0.id != currentID }.randomElement() ?? pool[0]
+            var queue = playlist.shuffleQueueIDs ?? []
+            var knownPool = playlist.shufflePoolIDs ?? []
+            var avoid = usedIDs
+            if let currentID { avoid.insert(currentID) }
+            let nextID = PlaylistShuffle.takeNext(
+                poolIDs: pool.map(\.id),
+                queue: &queue,
+                knownPool: &knownPool,
+                avoiding: avoid
+            )
+            playlist.shuffleQueueIDs = queue.isEmpty ? nil : queue
+            playlist.shufflePoolIDs = knownPool
+            if let nextID, let record = pool.first(where: { $0.id == nextID }) {
+                return record
+            }
+            return pool[0]
         case .newest:
             let ordered = pool.sorted { $0.updatedAt > $1.updatedAt }
-            if let position = ordered.firstIndex(where: { $0.id == currentID }) {
-                return ordered[(position + 1) % ordered.count]
+            let fresh = ordered.filter { !usedIDs.contains($0.id) }
+            let choices = fresh.isEmpty ? ordered : fresh
+            if let currentID, let position = choices.firstIndex(where: { $0.id == currentID }) {
+                return choices[(position + 1) % choices.count]
             }
-            return ordered[0]
+            return choices[0]
         case .oldest:
             let ordered = pool.sorted { $0.updatedAt < $1.updatedAt }
-            if let position = ordered.firstIndex(where: { $0.id == currentID }) {
-                return ordered[(position + 1) % ordered.count]
+            let fresh = ordered.filter { !usedIDs.contains($0.id) }
+            let choices = fresh.isEmpty ? ordered : fresh
+            if let currentID, let position = choices.firstIndex(where: { $0.id == currentID }) {
+                return choices[(position + 1) % choices.count]
             }
-            return ordered[0]
+            return choices[0]
         }
     }
 
@@ -2188,7 +2230,7 @@ final class StudioViewModel: ObservableObject {
         }
         let candidates = records.filter { !$0.isTrashed && $0.hasUsableImageFile }
         guard !candidates.isEmpty else {
-            notice = "作品集里还没有可换的壁纸。"
+            notice = L10n.tr("作品集里还没有可换的壁纸。")
             return
         }
         let currentID = resolveWallpaperRecord(on: screenID)?.id
@@ -2211,7 +2253,7 @@ final class StudioViewModel: ObservableObject {
     func retagFilteredArtworks() {
         let ids = filteredArtworks.map(\.id)
         guard !ids.isEmpty else {
-            notice = "当前筛选下没有可重打标签的作品。"
+            notice = L10n.tr("当前筛选下没有可重打标签的作品。")
             return
         }
         startRetag(ids: ids, dropTags: selectedLibraryTags)
@@ -2226,8 +2268,8 @@ final class StudioViewModel: ObservableObject {
         retagTask = nil
         isRetagging = false
         notice = retagTotal > 0
-            ? "已停止重打标签（完成 \(retagDone)/\(retagTotal)）。"
-            : "已停止重打标签。"
+            ? L10n.tr("已停止重打标签（完成 \(retagDone)/\(retagTotal)）。")
+            : L10n.tr("已停止重打标签。")
     }
 
     private func startRetag(ids: [UUID], dropTags: Set<String>) {
@@ -2238,8 +2280,8 @@ final class StudioViewModel: ObservableObject {
         retagTotal = ids.count
         let useAgent = promptAgentRouting.enabled && promptAPIKeyConfigured
         notice = useAgent
-            ? "正在并行用 Agent 重打标签 \(ids.count) 张（遇阻塞自动降并发）…"
-            : "正在并行重打标签 \(ids.count) 张…"
+            ? L10n.tr("正在并行用 Agent 重打标签 \(ids.count) 张（遇阻塞自动降并发）…")
+            : L10n.tr("正在并行重打标签 \(ids.count) 张…")
         retagTask = Task { @MainActor in
             defer {
                 isRetagging = false
@@ -2349,8 +2391,8 @@ final class StudioViewModel: ObservableObject {
                 if retagDone % 25 == 0 || retagDone == retagTotal {
                     let limit = await gate.currentLimit
                     notice = useAgent
-                        ? "正在并行重打标签 \(retagDone)/\(retagTotal)（并发 \(limit)）…"
-                        : "正在重打标签 \(retagDone)/\(retagTotal)…"
+                        ? L10n.tr("正在并行重打标签 \(retagDone)/\(retagTotal)（并发 \(limit)）…")
+                        : L10n.tr("正在重打标签 \(retagDone)/\(retagTotal)…")
                     persist()
                 }
             }
@@ -2476,7 +2518,7 @@ final class StudioViewModel: ObservableObject {
         guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
         playlists[index].enabled = enabled
         if enabled && artworks(for: playlists[index]).isEmpty {
-            notice = "这个轮播还没有作品。先生成一组，或换一个有图的来源。"
+            notice = L10n.tr("这个轮播还没有作品。先生成一组，或换一个有图的来源。")
         }
         persist()
         configureAutomations()
@@ -2486,14 +2528,14 @@ final class StudioViewModel: ObservableObject {
         if id == WallpaperPlaylist.presetID {
             guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
             playlists[index].enabled = false
-            notice = "预设换壁纸任务会一直保留，已改为暂停。"
+            notice = L10n.tr("预设换壁纸任务会一直保留，已改为暂停。")
             persist()
             configureAutomations()
             return
         }
         playlists.removeAll { $0.id == id }
         if ensurePresetPlaylist() {
-            notice = "已保留预设「随机」换壁纸任务。"
+            notice = L10n.tr("已保留预设「随机」换壁纸任务。")
         }
         persist()
         configureAutomations()
@@ -2516,7 +2558,9 @@ final class StudioViewModel: ObservableObject {
                 lastArtworkIDsByDisplay: old.lastArtworkIDsByDisplay,
                 targetDisplayIDs: old.targetDisplayIDs,
                 atmosphere: old.atmosphere,
-                priority: old.priority ?? WallpaperPlaylist.minPriority
+                priority: old.priority ?? WallpaperPlaylist.minPriority,
+                shuffleQueueIDs: old.shuffleQueueIDs,
+                shufflePoolIDs: old.shufflePoolIDs
             )
             return true
         }
@@ -2532,9 +2576,12 @@ final class StudioViewModel: ObservableObject {
     ) {
         guard let index = playlists.firstIndex(where: { $0.id == id }) else { return }
         refreshDisplays()
-        let playlist = playlists[index]
+        var playlist = playlists[index]
+        if let excludedID {
+            playlist.shuffleQueueIDs?.removeAll { $0 == excludedID }
+        }
         let pool = artworks(for: playlist).filter { $0.id != excludedID }
-        guard !pool.isEmpty else { notice = "这个轮播来源中还没有可用作品。"; return }
+        guard !pool.isEmpty else { notice = L10n.tr("这个轮播来源中还没有可用作品。"); return }
         let connected = displayProfiles.map(\.id)
         let available = playlist.resolvedTargetDisplayIDs(available: connected)
         let owned = WallpaperPlaylist.ownedDisplayIDs(for: playlist, among: playlists, available: connected)
@@ -2547,7 +2594,7 @@ final class StudioViewModel: ObservableObject {
         }
         if targets.isEmpty {
             if !respectPriority {
-                notice = "找不到可用屏幕。"
+                notice = L10n.tr("找不到可用屏幕。")
             }
             return
         }
@@ -2556,17 +2603,17 @@ final class StudioViewModel: ObservableObject {
         var assignments: [(displayID: String, path: String, recordID: UUID)] = []
         for displayID in targets {
             let currentID = playlist.lastArtworkID(on: displayID) ?? excludedID
-            let preferFresh = pool.filter { !usedIDs.contains($0.id) }
-            let candidates = preferFresh.isEmpty ? pool : preferFresh
             let next = pickPlaylistSuccessor(
-                from: candidates,
-                order: playlist.order,
-                currentID: currentID ?? UUID()
+                from: pool,
+                playlist: &playlist,
+                currentID: currentID,
+                avoiding: usedIDs
             )
             guard let path = next.imagePath else { continue }
             usedIDs.insert(next.id)
             assignments.append((displayID: displayID, path: path, recordID: next.id))
         }
+        playlists[index] = playlist
         guard !assignments.isEmpty else { return }
         enqueueWallpaperApply(
             assignments: assignments,
@@ -2580,9 +2627,9 @@ final class StudioViewModel: ObservableObject {
 
     func playlistSourceName(_ playlist: WallpaperPlaylist) -> String {
         switch playlist.source {
-        case .all: return "全部作品"
-        case .task: return channels.first(where: { $0.id == playlist.sourceID })?.name ?? "未选择任务"
-        case .collection: return smartCollections.first(where: { $0.id == playlist.sourceID })?.name ?? "未选择作品集"
+        case .all: return L10n.tr("全部作品")
+        case .task: return channels.first(where: { $0.id == playlist.sourceID })?.name ?? L10n.tr("未选择任务")
+        case .collection: return smartCollections.first(where: { $0.id == playlist.sourceID })?.name ?? L10n.tr("未选择作品集")
         }
     }
 
@@ -2601,7 +2648,7 @@ final class StudioViewModel: ObservableObject {
         persist()
         refreshDesktopControls()
         if announce {
-            notice = "已移入回收箱。可在作品集「回收箱」还原，或永久删除。"
+            notice = L10n.tr("已移入回收箱。可在作品集「回收箱」还原，或永久删除。")
         }
     }
 
@@ -2641,7 +2688,7 @@ final class StudioViewModel: ObservableObject {
         records[index].updatedAt = Date()
         persist()
         refreshDesktopControls()
-        notice = "已从回收箱还原。"
+        notice = L10n.tr("已从回收箱还原。")
     }
 
     /// Permanent delete: remove record + disk files + tombstone stem.
@@ -2662,25 +2709,25 @@ final class StudioViewModel: ObservableObject {
         refreshDiskLibraryStats()
         refreshDesktopControls()
         if deletedFiles > 0 {
-            notice = "已永久删除（\(deletedFiles) 个文件）。"
+            notice = L10n.tr("已永久删除（\(deletedFiles) 个文件）。")
         } else {
-            notice = "已永久删除这张图。"
+            notice = L10n.tr("已永久删除这张图。")
         }
     }
 
     func emptyTrash() {
         let ids = trashedArtworks.map(\.id)
         guard !ids.isEmpty else {
-            notice = "回收箱已经是空的。"
+            notice = L10n.tr("回收箱已经是空的。")
             return
         }
         for id in ids { purgeFromTrash(id) }
-        notice = "已清空回收箱（\(ids.count) 张）。"
+        notice = L10n.tr("已清空回收箱（\(ids.count) 张）。")
     }
 
     func revealArtworkInFinder(_ id: UUID, preferSource: Bool = false) {
         guard let record = records.first(where: { $0.id == id }) else {
-            notice = "找不到这张作品。"
+            notice = L10n.tr("找不到这张作品。")
             return
         }
         let url: URL?
@@ -2692,7 +2739,7 @@ final class StudioViewModel: ObservableObject {
             url = nil
         }
         guard let url, FileManager.default.fileExists(atPath: url.path) else {
-            notice = preferSource ? "找不到原图文件。" : "找不到壁纸文件。"
+            notice = preferSource ? L10n.tr("找不到原图文件。") : L10n.tr("找不到壁纸文件。")
             return
         }
         NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -2802,7 +2849,7 @@ final class StudioViewModel: ObservableObject {
         if selectedChannelID == id { selectChannel(channels.first?.id) }
         persist()
         configureAutomations()
-        notice = "已删掉这个系列。图还在图库里，可以单独删。"
+        notice = L10n.tr("已删掉这个系列。图还在图库里，可以单独删。")
     }
 
     func saveSettings() {
@@ -2825,30 +2872,30 @@ final class StudioViewModel: ObservableObject {
         do {
             try LoginLaunchService.setEnabled(enabled)
             if LoginLaunchService.needsApproval {
-                notice = "系统还需要你批准登录项。已打开「登录项」设置页。"
+                notice = L10n.tr("系统还需要你批准登录项。已打开「登录项」设置页。")
                 LoginLaunchService.openLoginItemsSettings()
             } else {
-                notice = enabled ? "已设为开机启动。登录后会自动打开 Musepaper。" : "已关闭开机启动。"
+                notice = enabled ? L10n.tr("已设为开机启动。登录后会自动打开 Musepaper。") : L10n.tr("已关闭开机启动。")
             }
             objectWillChange.send()
         } catch {
-            notice = "开机启动设置失败：\(error.localizedDescription)。请把 App 放到「应用程序」后再试，或到系统设置 → 通用 → 登录项里手动添加。"
+            notice = L10n.tr("开机启动设置失败：\(error.localizedDescription)。请把 App 放到「应用程序」后再试，或到系统设置 → 通用 → 登录项里手动添加。")
             LoginLaunchService.openLoginItemsSettings()
         }
     }
 
     func runScheduledGeneration(taskID: UUID? = nil) {
         if settings.skipWhenLowPower ?? true, ProcessInfo.processInfo.isLowPowerModeEnabled {
-            notice = "已跳过自动生成：Mac 正处于低电量模式。"
+            notice = L10n.tr("已跳过自动生成：Mac 正处于低电量模式。")
             return
         }
         guard networkMonitor.isOnline || activeModelConfiguration?.provider == .demo else {
-            notice = "已跳过自动生成：当前没有网络连接。"
+            notice = L10n.tr("已跳过自动生成：当前没有网络连接。")
             return
         }
         guard let seriesID = taskID ?? settings.scheduledSeriesID ?? selectedChannelID,
               let series = channels.first(where: { $0.id == seriesID }) else {
-            notice = "自动出图已跳过：先给一个系列打开自动出图。"
+            notice = L10n.tr("自动出图已跳过：先给一个系列打开自动出图。")
             return
         }
         if isCreationBusy {
@@ -2870,7 +2917,7 @@ final class StudioViewModel: ObservableObject {
             let batchID = beginPreparingBatch(trigger: .scheduled, seriesID: series.id, prompt: baseline)
             generationTotal = count
             generationIndex = 0
-            notice = "到点了，正在接着「\(series.name)」上一张继续；每张画面都会不同。"
+            notice = L10n.tr("到点了，正在接着「\(series.name)」上一张继续；每张画面都会不同。")
             startGeneration(
                 prompt: baseline, trigger: .scheduled, variationSeed: seed,
                 seriesID: series.id, candidateCount: count, rawInput: "",
@@ -3011,17 +3058,28 @@ final class StudioViewModel: ObservableObject {
             allowPersistingModelConfigurations = loadedModelsFromDisk || loadedPromptFromDisk
             var sizeBumpNotice: String?
             if loadedModelsFromDisk {
-                var bumped = false
+                var qwenBumped = false
+                var lladaBumped = false
                 for index in modelConfigurations.indices {
                     let preferred = OpenAIImageProvider.preferredSize(for: modelConfigurations[index])
                     if preferred != modelConfigurations[index].size {
+                        if ImagePromptDialect.infer(from: modelConfigurations[index].model) == .llada {
+                            lladaBumped = true
+                        } else {
+                            qwenBumped = true
+                        }
                         modelConfigurations[index].size = preferred
-                        bumped = true
                     }
                 }
-                if bumped {
+                if qwenBumped || lladaBumped {
                     shouldPersistBootstrap = true
-                    sizeBumpNotice = "AntChat 出图尺寸已升到更高清（如 2048×1152），避免拉到大屏发糊"
+                    if lladaBumped && !qwenBumped {
+                        sizeBumpNotice = L10n.tr("LLaDA 按官方 1024 族出图，已从 Qwen 的 2048 改回 1536×1024")
+                    } else if lladaBumped {
+                        sizeBumpNotice = L10n.tr("AntChat/Qwen 升到 2048×1152；LLaDA 改回官方 1536×1024")
+                    } else {
+                        sizeBumpNotice = L10n.tr("AntChat 出图尺寸已升到更高清（如 2048×1152），避免拉到大屏发糊")
+                    }
                 }
             }
             var reclaimedKeys = 0
@@ -3040,10 +3098,10 @@ final class StudioViewModel: ObservableObject {
             }
             if let sizeBumpNotice { notices.append(sizeBumpNotice) }
             if reclaimedKeys > 0 {
-                notices.append("已找回 \(reclaimedKeys) 个本机 API Key（配置 ID 变更后重新绑定）")
+                notices.append(L10n.tr("已找回 \(reclaimedKeys) 个本机 API Key（配置 ID 变更后重新绑定）"))
             }
-            if removedMissing > 0 { notices.append("清理 \(removedMissing) 张丢失文件") }
-            if imported > 0 { notices.append("从磁盘找回 \(imported) 张作品") }
+            if removedMissing > 0 { notices.append(L10n.tr("清理 \(removedMissing) 张丢失文件")) }
+            if imported > 0 { notices.append(L10n.tr("从磁盘找回 \(imported) 张作品")) }
             if removedMissing > 0 || imported > 0 || settings.historyLimit != snapshot.settings.historyLimit
                 || reclaimedKeys > 0 || shouldPersistBootstrap
             {
@@ -3144,8 +3202,8 @@ final class StudioViewModel: ObservableObject {
                 return
             }
             let content = UNMutableNotificationContent()
-            content.title = "Musepaper 有新版本 \(latest)"
-            content.body = "当前 \(current)。打开应用下载页安装（不会静默替换）。"
+            content.title = L10n.tr("Musepaper 有新版本 \(latest)")
+            content.body = L10n.tr("当前 \(current)。打开应用下载页安装（不会静默替换）。")
             content.sound = .default
             let request = UNNotificationRequest(
                 identifier: "musepaper.update.\(latest)",
@@ -3457,6 +3515,10 @@ final class StudioViewModel: ObservableObject {
         return rankedPlaylists.first { $0.enabled }
     }
 
+    func refreshLivingAtmosphere() {
+        refreshLivingWallpaper()
+    }
+
     private func refreshLivingWallpaper() {
         let globalEnabled = settings.livingWallpaperEnabled ?? true
         let globalStyle = settings.livingWallpaperStyle ?? .kenBurns
@@ -3469,7 +3531,10 @@ final class StudioViewModel: ObservableObject {
         } else {
             config = (globalEnabled, globalStyle.resolvedMotion)
         }
-        livingWallpaper.update(enabled: config.enabled, style: config.style)
+        livingWallpaper.update(
+            enabled: config.enabled,
+            style: config.style
+        )
     }
 
     private func refreshDesktopPresence() {
@@ -3563,7 +3628,7 @@ final class StudioViewModel: ObservableObject {
                 try await store.save(value)
             } catch {
                 await MainActor.run {
-                    notice = "保存失败：\(error.localizedDescription)"
+                    notice = L10n.tr("保存失败：\(error.localizedDescription)")
                 }
             }
         }
@@ -3712,7 +3777,8 @@ final class StudioViewModel: ObservableObject {
             variationAxes: composer.usableVisual(resolvedChannel?.resolvedVariationAxes ?? "") ?? "",
             variationSeed: seed,
             promptStrategy: resolvedChannel?.resolvedPromptStrategy.rawValue,
-            dimensionCombo: composer.usableVisual(dimensionCombo) ?? ""
+            dimensionCombo: composer.usableVisual(dimensionCombo) ?? "",
+            imageModel: activeModelConfiguration?.model ?? ""
         )
     }
 
@@ -3807,7 +3873,7 @@ final class StudioViewModel: ObservableObject {
                 }
             }
         } catch {
-            promptAgentNotice = "作品已使用本地标签；AI 标签暂不可用：\(error.localizedDescription)"
+            promptAgentNotice = L10n.tr("作品已使用本地标签；AI 标签暂不可用：\(error.localizedDescription)")
         }
     }
 
@@ -3851,7 +3917,7 @@ final class StudioViewModel: ObservableObject {
             .sorted { $0.date < $1.date }
             .first
         let idea = draft.input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let currentName = selectedChannel?.name ?? (idea.isEmpty ? nil : "这次的想法")
+        let currentName = selectedChannel?.name ?? (idea.isEmpty ? nil : L10n.tr("这次的想法"))
         let current = resolveCurrentWallpaperRecord()
         let liked = current.map(isLikedDesktopWallpaper) ?? false
         menuBar.update(

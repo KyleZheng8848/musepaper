@@ -48,7 +48,7 @@ final class UpdateCheckService {
                     releasesUrl: nil,
                     downloadUrl: nil,
                     highlights: [],
-                    message: "更新源返回 HTTP \(http.statusCode)。"
+                    message: L10n.tr("更新源返回 HTTP \(http.statusCode)。")
                 )
                 lastResult = result
                 return result
@@ -62,7 +62,7 @@ final class UpdateCheckService {
                     releasesUrl: nil,
                     downloadUrl: nil,
                     highlights: [],
-                    message: "更新清单格式无法解析。"
+                    message: L10n.tr("更新清单格式无法解析。")
                 )
                 lastResult = result
                 return result
@@ -85,7 +85,7 @@ final class UpdateCheckService {
                 releasesUrl: nil,
                 downloadUrl: nil,
                 highlights: [],
-                message: "检查更新失败：\(error.localizedDescription)"
+                message: L10n.tr("检查更新失败：\(error.localizedDescription)")
             )
             lastResult = result
             return result

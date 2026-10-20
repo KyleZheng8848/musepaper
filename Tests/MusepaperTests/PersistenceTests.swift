@@ -77,6 +77,8 @@ final class PersistenceTests: XCTestCase {
             "settings": [
                 "desktopClockFace": "海报竖排",
                 "livingWallpaperStyle": "不存在的动效",
+                "livingHoloFoil": "不存在的箔",
+                "livingDepthStyle": "不存在的深度",
                 "autoApply": false,
                 "generateBeforeApplying": true,
                 "scheduleEnabled": false,
@@ -101,6 +103,8 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(loaded.smartCollections?.first?.name, "喜欢霓虹")
         XCTAssertNil(loaded.settings.desktopClockFace)
         XCTAssertNil(loaded.settings.livingWallpaperStyle)
+        XCTAssertNil(loaded.settings.livingHoloFoil)
+        XCTAssertNil(loaded.settings.livingDepthStyle)
     }
 
     func testSaveKeepsRotatingSnapshotBackups() async throws {
@@ -199,12 +203,27 @@ final class PersistenceTests: XCTestCase {
         let store = JSONStore(fileURL: url)
         var snapshot = AppSnapshot()
         snapshot.playlists = [
-            WallpaperPlaylist(name: "工作", priority: 8, applyToDesktop: false, applyToScreensaver: true)
+            WallpaperPlaylist(name: "工作", applyToDesktop: false, applyToScreensaver: true, priority: 8)
         ]
         try await store.save(snapshot)
         let loaded = try await store.load()
         let playlist = try XCTUnwrap(loaded.playlists?.first)
         XCTAssertTrue(playlist.targetsDesktop)
         XCTAssertEqual(playlist.resolvedPriority, 8)
+    }
+
+    func testPlaylistShuffleQueueRoundTrip() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathComponent("snapshot.json")
+        let store = JSONStore(fileURL: url)
+        var snapshot = AppSnapshot()
+        let bag = [UUID(), UUID(), UUID()]
+        snapshot.playlists = [
+            WallpaperPlaylist(name: "随机袋", order: .shuffle, shuffleQueueIDs: bag)
+        ]
+        try await store.save(snapshot)
+        let loaded = try await store.load()
+        XCTAssertEqual(loaded.playlists?.first?.shuffleQueueIDs, bag)
     }
 }

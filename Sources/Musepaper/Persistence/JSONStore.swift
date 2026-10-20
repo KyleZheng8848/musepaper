@@ -33,14 +33,14 @@ actor JSONStore {
 
         for backup in backupURLs() {
             guard let data = try? Data(contentsOf: backup), let snapshot = decodeFlexible(data) else { continue }
-            lastLoadNote = "主配置无法解码，已从备份恢复（\(backup.lastPathComponent)）"
+            lastLoadNote = L10n.tr("主配置无法解码，已从备份恢复（\(backup.lastPathComponent)）")
             // Restore primary so future launches stay healthy.
             try? data.write(to: fileURL, options: .atomic)
             return snapshot
         }
 
         throw MusepaperError.persistenceFailed(
-            "作品库配置无法读取，且没有可用备份。为避免覆盖，本次不会写入。请从 Time Machine 恢复 snapshot.json。"
+            L10n.tr("作品库配置无法读取，且没有可用备份。为避免覆盖，本次不会写入。请从 Time Machine 恢复 snapshot.json。")
         )
     }
 
@@ -100,7 +100,7 @@ actor JSONStore {
             return nil
         }
         if lastLoadNote == nil {
-            lastLoadNote = "配置里有过期字段，已自动兼容加载"
+            lastLoadNote = L10n.tr("配置里有过期字段，已自动兼容加载")
         }
         return snapshot
     }
@@ -116,6 +116,8 @@ enum SnapshotSanitizer {
         if var settings = root["settings"] as? [String: Any] {
             nullUnknown(&settings, key: "desktopClockFace", allowed: DesktopClockFace.allCases.map(\.rawValue))
             nullUnknown(&settings, key: "livingWallpaperStyle", allowed: LivingWallpaperStyle.allCases.map(\.rawValue))
+            nullUnknown(&settings, key: "livingHoloFoil", allowed: LivingHoloFoil.allCases.map(\.rawValue))
+            nullUnknown(&settings, key: "livingDepthStyle", allowed: LivingDepthStyle.allCases.map(\.rawValue))
             nullUnknown(&settings, key: "wallpaperTransition", allowed: WallpaperTransition.allCases.map(\.rawValue))
             nullUnknown(&settings, key: "desktopWeatherUnit", allowed: WeatherTemperatureUnit.allCases.map(\.rawValue))
             nullUnknown(&settings, key: "scheduledApplyMode", allowed: ScheduledApplyMode.allCases.map(\.rawValue))

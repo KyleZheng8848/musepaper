@@ -1,5 +1,35 @@
 import Foundation
 
+enum ImagePromptDialect: Equatable, Sendable {
+    case qwen
+    case llada
+    case generic
+
+    static func infer(from model: String) -> ImagePromptDialect {
+        let name = model.lowercased()
+        if name.contains("llada") { return .llada }
+        if name.contains("qwen") { return .qwen }
+        return .generic
+    }
+}
+
+struct PromptFramePlan: Equatable, Sendable {
+    enum Kind: String, Equatable, Sendable {
+        case figure
+        case named
+        case mood
+    }
+
+    var core: String
+    var kind: Kind
+    var light: String
+    var textRisk: Bool
+    var wantsNight: Bool
+    var wantsFog: Bool
+    var wantsRain: Bool
+    var dialect: ImagePromptDialect
+}
+
 struct PromptComposer: Sendable {
     private let variationPlanner = VariationPlanner()
 
@@ -52,45 +82,408 @@ struct PromptComposer: Sendable {
     /// go to English so adjective piles are less likely to be painted as captions.
     /// The visible thing rotates: person / empty place / still life / interior.
     /// Instruction Chinese (没有文字 / 招牌) is stripped.
-    func imageModelPrompt(_ scene: String, core: String = "", seed: Int = 0) -> String {
+    func imageModelPrompt(_ scene: String, core: String = "", seed: Int = 0, model: String = "") -> String {
+        let dialect = ImagePromptDialect.infer(from: model)
         let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
         let incoming = scene.trimmingCharacters(in: .whitespacesAndNewlines)
         var body = groundIfNeeded(incoming.isEmpty ? locked : incoming, core: locked, seed: seed)
-        body = stripUnrequestedGlyphCarriers(enforcePureArtwork(body), core: locked)
+        if dialect == .llada {
+            return lladaImageScene(core: locked, seed: seed, scene: incoming)
+        }
+        body = stripInstructionEcho(sanitizeVisibleArtwork(body, core: locked, dialect: dialect))
         if needsGroundedScene(locked) {
             var english = containsCJK(body) ? translateToImageEnglish(body) : collapseEnglish(body)
+            let englishCore = containsCJK(locked) ? translateToImageEnglish(locked) : collapseEnglish(locked)
+            english = collapseEnglish(stripCJK(english))
+            english = stripInstructionEcho(english)
             if english.split(whereSeparator: { $0.isWhitespace || $0 == "," }).count < 4 {
                 english = fallbackEnglishScene(core: locked, seed: seed)
             }
             if !hasConcreteSubject(english) {
-                english = collapseEnglish([english, moodSightingEnglish(seed: seed)].filter { !$0.isEmpty }.joined(separator: ", "))
+                english = collapseEnglish([english, needsGroundedScene(locked) ? moodSightingEnglish(seed: seed) : englishCore].filter { !$0.isEmpty }.joined(separator: ", "))
             }
-            return wrapImagePrompt(collapseEnglish(stripCJK(english)), core: locked)
+            if !englishCore.isEmpty, !english.localizedCaseInsensitiveContains(englishCore) {
+                english = collapseEnglish("\(englishCore), \(english)")
+            }
+            return wrapImagePrompt(collapseEnglish(stripCJK(english)), core: locked, dialect: dialect)
         }
         body = pinCore(locked, onto: body)
-        guard !body.isEmpty else { return wrapImagePrompt(locked, core: locked) }
-        return wrapImagePrompt(body, core: locked)
+        body = stripInstructionEcho(body)
+        guard !body.isEmpty else { return wrapImagePrompt(locked, core: locked, dialect: dialect) }
+        return wrapImagePrompt(body, core: locked, dialect: dialect)
     }
 
-    private func wrapImagePrompt(_ body: String, core: String) -> String {
-        let text = collapseEnglish(body)
-        guard !text.isEmpty else {
-            return isFigureSubject(core) ? "photorealistic photograph of a person" : "photorealistic photograph"
+    func finishAgentPrompt(_ scene: String, core: String, seed: Int = 0, model: String = "") -> String {
+        let dialect = ImagePromptDialect.infer(from: model)
+        if dialect == .llada {
+            return lladaImageScene(core: core, seed: seed, scene: scene)
         }
+        var body = neutralizeSignLettering(stripInstructionEcho(enforcePureArtwork(scene)), core: core)
+        body = groundIfNeeded(body, core: core, seed: seed)
+        body = pinCore(core, onto: body)
+        body = stripInstructionEcho(body)
+        return wrapImagePrompt(body, core: core, dialect: dialect)
+    }
+
+    /// LLaDA is bilingual. Keep the user's Chinese subject. Only strip instruction echo
+    /// (Those characters / 写着 / This frame differs) — never translate 晶石 away.
+    func promptFrame(core: String, seed: Int = 0) -> (light: String, view: String) {
+        lladaFramePair(core: core, seed: seed)
+    }
+
+    func lladaImageScene(core: String, seed: Int = 0, scene: String = "") -> String {
+        let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
+        let incoming = stripInstructionEcho(
+            neutralizeSignLettering(
+                stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: locked),
+                core: locked
+            )
+        )
+        if usableLladaAgentBody(incoming, core: locked) {
+            var body = incoming
+            if !locked.isEmpty, !body.contains(locked) {
+                body = pinCore(locked, onto: body)
+            }
+            body = stripUnrequestedGloom(body, core: locked)
+            body = collapseStripDebris(stripInstructionEcho(body))
+            let (light, view) = lladaFramePair(core: locked, seed: seed)
+            if !body.contains(light) {
+                body = containsCJK(body) ? "\(body)，\(light)" : "\(body), \(light)"
+            }
+            if !body.contains(view) {
+                body = containsCJK(body) ? "\(body)，\(view)" : "\(body), \(view)"
+            }
+            if containsCJK(body), !body.contains("电影感照片") {
+                body = "一张电影感照片，\(body)"
+            } else if !containsCJK(body), !body.lowercased().contains("cinematic photograph") {
+                body = "A cinematic photograph of \(body)"
+            }
+            return containsCJK(body) ? collapseSeparators(body) : collapseEnglish(body)
+        }
+        var subject = neutralizeSignLettering(locked, core: locked)
+        subject = stripUnrequestedGlyphCarriers(subject, core: locked)
+        subject = stripInstructionEcho(subject)
+        subject = collapseStripDebris(subject)
+        if subject.isEmpty { subject = locked }
+        if subject.lowercased().hasPrefix("a cinematic photograph of") {
+            subject = String(subject.dropFirst("a cinematic photograph of".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if subject.hasPrefix("一张电影感照片") {
+            subject = subject.replacingOccurrences(of: "一张电影感照片，", with: "")
+            subject = subject.replacingOccurrences(of: "一张电影感照片:", with: "")
+            subject = subject.replacingOccurrences(of: "一张电影感照片：", with: "")
+        }
+        let (light, view) = lladaFramePair(core: locked, seed: seed)
+        if containsCJK(subject) {
+            return collapseSeparators("一张电影感照片，\(subject)，\(light)，\(view)")
+        }
+        return collapseEnglish("A cinematic photograph of \(subject), \(light), \(view)")
+    }
+
+    func usableLladaAgentBody(_ scene: String, core: String) -> Bool {
+        let text = scene.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count >= 6, text.count <= 220 else { return false }
+        guard !containsInstructionLeak(text) else { return false }
+        guard !text.contains("写着") else { return false }
+        let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
+        if !locked.isEmpty {
+            return text.contains(locked) || hasConcreteSubject(text)
+        }
+        return hasConcreteSubject(text)
+    }
+
+    private func lladaFramePair(core: String, seed: Int) -> (String, String) {
+        let zh = containsCJK(core)
+        let lights: [String]
+        if wantsNightWeather(core) {
+            lights = wantsRainWeather(core)
+                ? (zh ? ["雨夜的光", "湿雨夜里的街", "雨和霓虹"] : ["wet night light", "rain-soaked night streets", "dark rain and neon"])
+                : (zh ? ["夜光", "月光", "城市夜灯"] : ["night light", "moonlit night", "city lights at night"])
+        } else if wantsFogWeather(core) {
+            lights = zh ? ["薄雾柔光", "晨雾", "雾里的光"] : ["soft misty light", "pale morning mist", "diffused fog light"]
+        } else if wantsRainWeather(core) {
+            lights = zh ? ["雨天日光", "白日里的雨", "阴雨天光"] : ["wet daylight", "rain on a bright day", "overcast rain light"]
+        } else {
+            lights = zh
+                ? ["晴朗日光", "柔和晨光", "午后暖光", "正午强光"]
+                : ["bright natural daylight", "soft morning light", "warm late-afternoon light", "clear high-sun light"]
+        }
+        let views: [String]
         if isFigureSubject(core) {
-            return collapseEnglish("photorealistic portrait photograph, \(text)")
+            views = zh
+                ? ["浅景深", "四分之三人像", "更近的人像", "环境人像"]
+                : ["shallow depth of field", "three-quarter portrait view", "closer portrait framing", "wide environmental portrait"]
+        } else if isStillLifeObject(core) {
+            views = zh
+                ? ["静物特写", "切面占满画面", "物件四分之三视角", "物件贴近镜头"]
+                : ["close-up still life", "macro facets filling the frame", "three-quarter object view", "the object close to the lens"]
+        } else if isAerialSubject(core) {
+            views = zh
+                ? ["广角", "更近的航拍", "斜侧航拍", "高空晴空"]
+                : ["wide-angle photograph", "closer aerial framing", "oblique aerial view", "high clear-air vantage"]
+        } else {
+            views = zh
+                ? ["广角", "更近", "稍低机位", "稍高机位"]
+                : ["wide-angle photograph", "closer framing", "slightly lower vantage", "slightly higher vantage"]
         }
-        if text.localizedCaseInsensitiveContains("photorealistic photograph") {
+        let pack = abs(seed)
+        return (lights[pack % lights.count], views[(pack / lights.count) % views.count])
+    }
+
+    func framePlan(core: String, seed: Int, model: String = "") -> PromptFramePlan {
+        let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
+        let kind: PromptFramePlan.Kind
+        if isFigureSubject(locked) {
+            kind = .figure
+        } else if needsGroundedScene(locked) {
+            kind = .mood
+        } else {
+            kind = .named
+        }
+        let night = wantsNightWeather(locked)
+        let fog = wantsFogWeather(locked)
+        let rain = wantsRainWeather(locked)
+        let light: String
+        if night {
+            light = rain ? "rainy night light matching the subject" : "night light matching the subject"
+        } else if fog {
+            light = "soft natural light in the mist the subject already names"
+        } else if rain {
+            light = "wet daylight, rain as the subject asked"
+        } else {
+            light = Self.daylightClimates[abs(seed) % Self.daylightClimates.count]
+        }
+        return PromptFramePlan(
+            core: locked,
+            kind: kind,
+            light: light,
+            textRisk: hasTextRisk(locked),
+            wantsNight: night,
+            wantsFog: fog,
+            wantsRain: rain,
+            dialect: ImagePromptDialect.infer(from: model)
+        )
+    }
+
+    func hasTextRisk(_ text: String) -> Bool {
+        Self.textRiskKeys.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    func wantsNightWeather(_ text: String) -> Bool {
+        Self.nightWeatherKeys.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    func wantsFogWeather(_ text: String) -> Bool {
+        Self.fogWeatherKeys.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    func wantsRainWeather(_ text: String) -> Bool {
+        Self.rainWeatherKeys.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    func isAerialSubject(_ text: String) -> Bool {
+        Self.aerialSubjectKeys.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    /// Variation climate must not override the frame plan's light.
+    func alignVariationHint(_ raw: String, to plan: PromptFramePlan) -> String {
+        var text = usableVisual(raw) ?? sanitizeVisualPrompt(raw)
+        guard !text.isEmpty else { return "" }
+        if !plan.wantsFog {
+            text = stripListedPhrases(text, Self.fogTropes + Self.unrequestedFogHints)
+        }
+        if !plan.wantsNight {
+            text = stripListedPhrases(text, Self.nightTropes + Self.unrequestedNightHints)
+        }
+        return collapseStripDebris(text)
+    }
+
+    /// LLaDA only gets one short visible clause — long essays get painted as captions.
+    func shortVisualClause(_ raw: String) -> String {
+        let text = usableVisual(raw) ?? sanitizeVisualPrompt(raw)
+        guard !text.isEmpty else { return "" }
+        let clause = text.split(whereSeparator: { "，,。；;、".contains($0) }).first.map(String.init) ?? text
+        let trimmed = clause.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        if trimmed.count <= 16 { return trimmed }
+        return String(trimmed.prefix(16))
+    }
+
+    private func stripListedPhrases(_ scene: String, _ phrases: [String]) -> String {
+        var result = scene
+        for phrase in phrases.sorted(by: { $0.count > $1.count }) {
+            result = result.replacingOccurrences(of: phrase, with: " ", options: .caseInsensitive)
+        }
+        return result
+    }
+
+    func collapseStripDebris(_ text: String) -> String {
+        var result = containsCJK(text) ? collapseSeparators(text) : collapseEnglish(text)
+        result = result.replacingOccurrences(
+            of: #"[,，]\s*[里着上下的了在]\s*(?=[,，]|$)"#,
+            with: "，",
+            options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"(?:^|[,，]\s*)[里着上下的了在](?=[,，]|$)"#,
+            with: "，",
+            options: .regularExpression
+        )
+        return containsCJK(result) ? collapseSeparators(result) : collapseEnglish(result)
+    }
+
+    private func wrapImagePrompt(_ body: String, core: String, dialect: ImagePromptDialect) -> String {
+        var text = containsCJK(body) ? collapseSeparators(body) : collapseEnglish(body)
+        if dialect == .llada {
+            text = stripUnrequestedGloom(text, core: core)
+        }
+        guard !text.isEmpty else {
+            return emptyWrap(core: core, dialect: dialect)
+        }
+        let head = wallpaperWrapHead(core: core, dialect: dialect)
+        if dialect != .llada,
+           text.localizedCaseInsensitiveContains("photorealistic photograph"),
+           text.localizedCaseInsensitiveContains("fills the frame") {
             return text
         }
-        return collapseEnglish("photorealistic photograph, \(text)")
+        if containsCJK(text) {
+            return "\(head), \(collapseSeparators(text))"
+        }
+        return collapseEnglish("\(head), \(text)")
+    }
+
+    private func emptyWrap(core: String, dialect: ImagePromptDialect) -> String {
+        wallpaperWrapHead(core: core, dialect: dialect)
+    }
+
+    /// Visual wallpaper grammar only. Never say wallpaper / desktop / 壁纸 —
+    /// those words get painted or turned into a mockup.
+    private func wallpaperWrapHead(core: String, dialect: ImagePromptDialect) -> String {
+        let frame = "fills the frame"
+        if dialect == .llada {
+            // Short lighting words only. Full sentences get painted as captions.
+            if isFigureSubject(core) {
+                return wantsNightWeather(core) || wantsFogWeather(core)
+                    ? "natural-color portrait photograph, clear air"
+                    : "natural-color portrait photograph, even daylight, clear air"
+            }
+            if wantsNightWeather(core) || wantsFogWeather(core) {
+                return "natural-color photograph, clear air"
+            }
+            if hasTextRisk(core) || needsGroundedScene(core) {
+                return "natural-color photograph, even daylight, clear air"
+            }
+            return "natural-color photograph, clear air"
+        }
+        if isFigureSubject(core) {
+            return "photorealistic portrait photograph, \(frame)"
+        }
+        return "photorealistic photograph, \(frame)"
+    }
+
+    func stripInstructionEcho(_ scene: String) -> String {
+        var result = scene
+        for phrase in Self.instructionEchoPhrases.sorted(by: { $0.count > $1.count }) {
+            result = result.replacingOccurrences(of: phrase, with: " ", options: .caseInsensitive)
+        }
+        result = result.replacingOccurrences(
+            of: #"those\s+characters[\w\s,.'’]*subject\s+name"#,
+            with: " ",
+            options: [.regularExpression, .caseInsensitive]
+        )
+        result = result.replacingOccurrences(
+            of: #"\bare the\s*$"#,
+            with: "",
+            options: [.regularExpression, .caseInsensitive]
+        )
+        return collapseStripDebris(result)
+    }
+
+    private func sanitizeVisibleArtwork(_ scene: String, core: String, dialect: ImagePromptDialect) -> String {
+        var text = neutralizeSignLettering(stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: core), core: core)
+        if dialect == .llada {
+            text = stripUnrequestedGloom(text, core: core)
+        }
+        return text
+    }
+
+    func stripUnrequestedGloom(_ scene: String, core: String) -> String {
+        var result = scene
+        if !wantsNightWeather(core) {
+            for phrase in Self.nightTropes.sorted(by: { $0.count > $1.count }) {
+                result = result.replacingOccurrences(of: phrase, with: " ", options: .caseInsensitive)
+            }
+        }
+        if !wantsFogWeather(core) {
+            for phrase in Self.fogTropes.sorted(by: { $0.count > $1.count }) {
+                result = result.replacingOccurrences(of: phrase, with: " ", options: .caseInsensitive)
+            }
+        }
+        if !core.localizedCaseInsensitiveContains("电影") && !core.localizedCaseInsensitiveContains("cinematic") {
+            result = result.replacingOccurrences(of: "cinematic", with: " ", options: .caseInsensitive)
+        }
+        if !core.contains("剪影") && !core.localizedCaseInsensitiveContains("silhouette") {
+            result = result.replacingOccurrences(of: "剪影", with: " ")
+            result = result.replacingOccurrences(of: "silhouette", with: " ", options: .caseInsensitive)
+        }
+        return collapseStripDebris(result)
+    }
+
+    func neutralizeSignLettering(_ scene: String, core: String) -> String {
+        var result = scene
+        result = result.replacingOccurrences(
+            of: #"写着[^，,。.\s]{1,24}"#,
+            with: "空白表面",
+            options: .regularExpression
+        )
+        result = result.replacingOccurrences(
+            of: #"(?:says|reads)\s+["']?[\w\-]{1,24}"#,
+            with: " ",
+            options: [.regularExpression, .caseInsensitive]
+        )
+        if hasTextRisk(core) {
+            for phrase in ["欢迎光临", "欢迎"] {
+                if core.contains(phrase) { continue }
+                result = result.replacingOccurrences(of: phrase, with: " ")
+            }
+        }
+        if hasTextRisk(core), containsCJK(core) {
+            result = stripInventedLatinMarks(result, core: core)
+        }
+        if hasTextRisk(core), core.contains("黑板") || core.localizedCaseInsensitiveContains("chalkboard") {
+            result = result.replacingOccurrences(of: "黑板上，", with: "")
+            result = result.replacingOccurrences(of: "黑板上", with: "黑板")
+            let alreadyBlank = result.contains("空白")
+                || result.contains("空着")
+                || result.contains("深色空板")
+                || result.localizedCaseInsensitiveContains("blank")
+                || result.localizedCaseInsensitiveContains("unused")
+            if !alreadyBlank {
+                result = containsCJK(result) ? result + "，深色空板" : collapseEnglish(result + ", unused blank chalkboard")
+            }
+        }
+        return collapseStripDebris(result)
+    }
+
+    private func stripInventedLatinMarks(_ scene: String, core: String) -> String {
+        let pattern = try! NSRegularExpression(pattern: #"\b[A-Za-z][A-Za-z0-9\-.]{2,}\b"#)
+        let range = NSRange(scene.startIndex..<scene.endIndex, in: scene)
+        var result = scene
+        for match in pattern.matches(in: scene, range: range).reversed() {
+            guard let swiftRange = Range(match.range, in: scene) else { continue }
+            let token = String(scene[swiftRange])
+            if core.localizedCaseInsensitiveContains(token) { continue }
+            if token.localizedCaseInsensitiveContains("mm") { continue }
+            result.replaceSubrange(swiftRange, with: " ")
+        }
+        return result
     }
 
     /// Library / Agent rewrite. Named subjects keep the user's name.
     /// Mood-only cores become a spoken English sighting, not a fixed empty yard.
     func spokenRewrite(_ scene: String, core: String, seed: Int = 0) -> String {
         let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
-        var body = stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: locked)
+        var body = neutralizeSignLettering(stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: locked), core: locked)
         if needsGroundedScene(locked) {
             if containsCJK(body) { body = translateToImageEnglish(body) }
             body = collapseEnglish(stripCJK(body))
@@ -287,11 +680,30 @@ struct PromptComposer: Sendable {
         return "开阔的风景"
     }
 
-    func negativePrompt(draft: PromptDraft, channel: InspirationChannel?) -> String {
-        let extras = [
+    func negativePrompt(draft: PromptDraft, channel: InspirationChannel?, model: String = "") -> String {
+        var extras = [
             draft.negative,
             draft.mode == .inspiration ? channel?.exclude ?? "" : ""
         ]
+        let core = [draft.input, channel?.lockedCore ?? "", channel?.essence ?? ""].joined(separator: " ")
+        if hasTextRisk(core) {
+            extras.append("board lettering, chalkboard writing, menu text, shop sign writing")
+        }
+        if ImagePromptDialect.infer(from: model) == .llada {
+            // Official demo uses an empty negative. Kitchen-sink text/fog/blur
+            // bans fight a model trained to render text and follow photo sentences.
+            extras.append("desktop screenshot, dock, menu bar")
+            var slim = extras
+                .flatMap { $0.split(whereSeparator: { "、,，;；/".contains($0) }) }
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            if allowsVisibleFigure(draft.input)
+                || allowsVisibleFigure(channel?.lockedCore ?? "")
+                || allowsVisibleFigure(channel?.essence ?? "") {
+                slim = stripFigureBans(slim)
+            }
+            return Array(NSOrderedSet(array: slim).compactMap { $0 as? String }).joined(separator: ", ")
+        }
         var merged = (Self.baseNegatives + extras)
             .flatMap { $0.split(whereSeparator: { "、,，;；/".contains($0) }) }
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -493,10 +905,11 @@ struct PromptComposer: Sendable {
             }
             return "\(subject), natural light"
         }
-        if hasResidualSubject(core) {
-            return "the given subject, natural light, cinematic framing"
-        }
-        return "clear subject in natural light"
+        return "a close-up still life, the object fills the frame"
+    }
+
+    func isStillLifeObject(_ text: String) -> Bool {
+        Self.stillLifeKeys.contains { text.localizedCaseInsensitiveContains($0) }
     }
 
     func stripCJK(_ text: String) -> String {
@@ -637,7 +1050,44 @@ struct PromptComposer: Sendable {
 
     private static let glyphCarriers = [
         "霓虹字", "广告牌", "招牌", "路牌", "海报", "报纸", "书页", "字幕", "屏幕",
-        "signage", "billboard", "neon sign"
+        "signage", "billboard", "neon sign",
+        "写着", "上面写着", "上面写", "写上了", "写有"
+    ]
+
+    private static let textRiskKeys = [
+        "招牌", "黑板", "菜单", "咖啡店", "咖啡馆", "海报", "广告牌", "路牌",
+        "chalkboard", "blackboard", "coffee shop", "menu board",
+        "signboard", "billboard", "poster", "signage", " cafe", "cafe "
+    ]
+
+    private static let nightWeatherKeys = ["夜", "午夜", "深夜", "黑夜", "夜间", "night", "midnight", "noir"]
+    private static let fogWeatherKeys = ["雾", "fog", "mist", "haze"]
+    private static let rainWeatherKeys = ["雨", "rain"]
+    private static let aerialSubjectKeys = [
+        "俯瞰", "高空", "航拍", "水上飞机", "aerial", "seaplane", "from above", "looking down"
+    ]
+    private static let stillLifeKeys = [
+        "晶石", "水晶", "宝石", "矿石", "晶体",
+        "crystal", "gemstone", "mineral", "quartz", "still life"
+    ]
+    private static let nightTropes = [
+        "noir", "horror", "underworld", "pitch dark", "barely visible",
+        "moonless", "lone silhouette", "dark silhouette", "dim alley",
+        "一个剪影", "夜雾", "雾夜", "阴间", "孤影", "夜里", "夜色", "品红夜"
+    ]
+    private static let fogTropes = [
+        "volumetric fog", "thick fog", "dense mist", "dense fog", "heavy fog",
+        "foggy night", "through the fog", "in the fog",
+        "一层薄雾", "薄雾", "雾吃后景", "雾吃边", "雾吃", "雾里", "海雾"
+    ]
+    private static let unrequestedFogHints = ["mist", "fog", "haze"]
+    private static let unrequestedNightHints = ["night color", "magenta night"]
+    private static let daylightClimates = [
+        "clear morning daylight, open air",
+        "bright midday daylight, even exposure",
+        "soft overcast daylight, gentle shadows",
+        "warm late-afternoon daylight",
+        "indoor daylight from a large window"
     ]
 
     private static let moodOnlyKeys: [String] = [
@@ -666,6 +1116,7 @@ struct PromptComposer: Sendable {
         "房间", "书房", "咖啡馆", "窗边", "阳台", "院子", "庭院",
         "宇宙", "星空", "深空", "银河", "行星", "月球", "星球", "星云", "超新星",
         "魔幻", "奇幻", "仙侠", "城堡",
+        "晶石", "水晶", "宝石", "矿石", "晶体",
         "海", "山", "林", "岛", "湖", "河", "江", "港", "桥", "塔", "寺", "店", "馆",
         "房", "园", "树", "窗", "灯", "路",
         "tokyo", "paris", "london", "shanghai", "beijing", "new york", "hong kong",
@@ -713,11 +1164,24 @@ struct PromptComposer: Sendable {
         ("无人的阳台，竹椅空着，窗帘被风轻轻掀开一点", "empty balcony, vacant bamboo chair, curtains lifted by a breeze"),
         ("安静的窗边，一杯放下的茶还冒着热气，外面只有浅色树影", "quiet window side, a steaming cup of tea, pale tree shadows outside"),
         ("铺着毯子的地板，阳光切成一块暖色", "a blanket on the floor, a slab of warm sunlight"),
+        ("从水上飞机高空俯瞰地面，马尔代夫", "turquoise Maldives atolls seen from a seaplane"),
+        ("从水上飞机高空俯瞰地面", "islands and clear water seen from a seaplane"),
+        ("一个咖啡店门口有一个黑板", "a cafe entrance with a chalkboard"),
+        ("水上飞机", "seaplane"),
+        ("高空俯瞰", "aerial view"),
+        ("俯瞰地面", "aerial land and sea"),
+        ("咖啡店门口", "cafe entrance"),
         ("马尔代夫的果冻海", "Maldives jelly-blue lagoon"),
         ("一杯咖啡", "a cup of coffee"),
         ("机械键盘", "mechanical keyboard"),
         ("红色跑车", "red sports car"),
         ("橘猫", "orange tabby cat"),
+        ("晶石", "a crystal mineral"),
+        ("水晶石", "a quartz crystal"),
+        ("矿石", "a mineral ore"),
+        ("晶体", "a crystal"),
+        ("宝石", "a gemstone"),
+        ("水晶", "quartz crystal"),
         ("超级无敌峡湾地貌", "dramatic fjord landscape"),
         ("雨夜的未来上海", "rainy night in futuristic Shanghai"),
         ("潮湿、安静、有巨大空间感的未来上海", "damp quiet futuristic Shanghai with huge space"),
@@ -753,6 +1217,11 @@ struct PromptComposer: Sendable {
         ("竹椅空着", "vacant bamboo chair"),
         ("窗帘", "curtains"),
         ("木地板", "wooden floorboards"),
+        ("俯瞰", "aerial view"),
+        ("高空", "from high above"),
+        ("飞机", "airplane"),
+        ("黑板", "chalkboard"),
+        ("咖啡店", "cafe"),
         ("马尔代夫", "Maldives"),
         ("未来", "futuristic"),
         ("上海", "Shanghai"),
@@ -904,7 +1373,54 @@ struct PromptComposer: Sendable {
         "本次变化种子", "Prompt 策略", "纯画面硬性要求", "避免：", "避免:",
         "没有文字", "no text", "Dock", "菜单栏",
         "简短系列名", "一句审美定义", "逗号分隔", "不可变核心", "画面核心", "维度与选项",
-        "保留主题", "不要写", "说明书", "分辨率", "字段名", "禁止输出", "必须织进"
+        "保留主题", "不要写", "说明书", "分辨率", "字段名", "禁止输出", "必须织进",
+        "those characters", "subject name", "keep them in the output", "the user wrote",
+        "core subject", "light for this frame"
+    ]
+
+    private static let instructionEchoPhrases = [
+        "this frame differs by",
+        "this frame differs",
+        "frame differs by",
+        "differs by",
+        "those characters are the subject name",
+        "those characters",
+        "keep them in the output",
+        "keep the subject's name",
+        "do not translate the name away",
+        "the user wrote",
+        "core subject (keep this name, do not swap it)",
+        "core subject",
+        "light for this frame",
+        "write a short wide-frame image prompt",
+        "write a short photograph",
+        "continues to the edges",
+        "not a handheld snapshot",
+        "not a poster with a border",
+        "not a centered product photo",
+        "describe what fills the screen",
+        "do not invent lettering or logos",
+        "use even daylight and natural color",
+        "do not default to night",
+        "这一张多看见：",
+        "这一张多看见",
+        "看见轮换，不要整批女人，不要整批空院子",
+        "看见轮换",
+        "不要整批女人",
+        "不要整批空院子",
+        "就是这个主题，不要改成别的东西",
+        "就是这个主题",
+        "这是人，人留在画面里",
+        "板面空白",
+        "深色空板",
+        "画面里是人",
+        "主题：",
+        "光：",
+        "看：",
+        "看见：",
+        "气味：",
+        "还要看见：",
+        "颜色："
     ]
 
     private static let visualLabels = [

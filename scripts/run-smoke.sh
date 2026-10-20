@@ -8,6 +8,8 @@ mkdir -p "${OUT:h}" "$PROJECT_DIR/.cache/clang"
 CLANG_MODULE_CACHE_PATH="$PROJECT_DIR/.cache/clang" swiftc \
   -swift-version 6 \
   -target "$(uname -m)-apple-macosx14.0" \
+  "$PROJECT_DIR/Sources/Musepaper/Localization/AppLanguage.swift" \
+  "$PROJECT_DIR/Sources/Musepaper/Localization/L10n.swift" \
   "$PROJECT_DIR/Sources/Musepaper/Domain/ModelConfiguration.swift" \
   "$PROJECT_DIR/Sources/Musepaper/Domain/PromptModelConfiguration.swift" \
   "$PROJECT_DIR/Sources/Musepaper/Domain/PromptDraft.swift" \

@@ -79,20 +79,23 @@ struct InspirationChannel: Codable, Identifiable, Equatable, Sendable {
     ) -> String {
         let parts = intervalComponents(seconds, minSeconds: minSeconds, maxSeconds: maxSeconds)
         if parts.days > 0, parts.hours == 0, parts.minutes == 0, parts.seconds == 0 {
-            return parts.days == 1 ? "每天一次" : "每 \(parts.days) 天"
+            return parts.days == 1 ? L10n.tr("每天一次") : L10n.tr("每 \(parts.days) 天")
         }
         if parts.days == 0, parts.hours == 1, parts.minutes == 0, parts.seconds == 0 {
-            return "每小时"
+            return L10n.tr("每小时")
         }
         if parts.days == 0, parts.minutes == 0, parts.seconds == 0, parts.hours > 0 {
-            return "每 \(parts.hours) 小时"
+            return L10n.tr("每 \(parts.hours) 小时")
+        }
+        if parts.days == 0, parts.hours == 0, parts.minutes == 0 {
+            return L10n.tr("每 \(parts.seconds) 秒")
         }
         var chunks: [String] = []
-        if parts.days > 0 { chunks.append("\(parts.days)天") }
-        if parts.hours > 0 { chunks.append("\(parts.hours)小时") }
-        if parts.minutes > 0 { chunks.append("\(parts.minutes)分") }
-        if parts.seconds > 0 { chunks.append("\(parts.seconds)秒") }
-        return chunks.isEmpty ? "每 \(max(1, minSeconds)) 秒" : "每 \(chunks.joined())"
+        if parts.days > 0 { chunks.append(L10n.tr("\(parts.days)天")) }
+        if parts.hours > 0 { chunks.append(L10n.tr("\(parts.hours)小时")) }
+        if parts.minutes > 0 { chunks.append(L10n.tr("\(parts.minutes)分")) }
+        if parts.seconds > 0 { chunks.append(L10n.tr("\(parts.seconds)秒")) }
+        return chunks.isEmpty ? L10n.tr("每 \(max(1, minSeconds)) 秒") : L10n.tr("每 \(chunks.joined())")
     }
 
     enum IntervalUnit: String, CaseIterable, Identifiable {

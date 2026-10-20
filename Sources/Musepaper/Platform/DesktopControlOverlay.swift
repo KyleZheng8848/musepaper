@@ -53,6 +53,10 @@ final class DesktopControlOverlay {
         }
     }
 
+    func refreshLanguage() {
+        if enabled { rebuild() }
+    }
+
     func hide() {
         tearDownWindows()
         enabled = false
@@ -78,8 +82,8 @@ final class DesktopControlOverlay {
             let gap: CGFloat = 10
             // Right-to-left cluster: next (corner) ← delete ← like
             let specs: [(symbol: String, tooltip: String, accent: Bool, action: Selector)] = [
-                ("forward.fill", "只换这块屏的下一张", false, #selector(DesktopControlProxy.next)),
-                ("trash", "把这块屏的壁纸移入回收箱并换下一张", false, #selector(DesktopControlProxy.delete)),
+                ("forward.fill", L10n.tr("只换这块屏的下一张"), false, #selector(DesktopControlProxy.next)),
+                ("trash", L10n.tr("把这块屏的壁纸移入回收箱并换下一张"), false, #selector(DesktopControlProxy.delete)),
                 (likedSymbol(liked), likedTooltip(liked), liked, #selector(DesktopControlProxy.like)),
             ]
 
@@ -113,7 +117,7 @@ final class DesktopControlOverlay {
     }
 
     private func likedSymbol(_ liked: Bool) -> String { liked ? "heart.fill" : "heart" }
-    private func likedTooltip(_ liked: Bool) -> String { liked ? "取消喜欢这块屏的壁纸" : "喜欢这块屏的壁纸（加入标签）" }
+    private func likedTooltip(_ liked: Bool) -> String { liked ? L10n.tr("取消喜欢这块屏的壁纸") : L10n.tr("喜欢这块屏的壁纸（加入标签）") }
 
     private func makeWindow(frame: NSRect, content: NSView) -> NSWindow {
         // Tiny panel only — never full-screen. Full-screen layers above
@@ -150,7 +154,7 @@ final class DesktopControlOverlay {
         action: Selector,
         displayID: String
     ) -> NSButton {
-        let button = NSButton(frame: NSRect(origin: .zero, size: size))
+        let button = PressFeedbackButton(frame: NSRect(origin: .zero, size: size))
         button.bezelStyle = .regularSquare
         button.isBordered = false
         button.wantsLayer = true
@@ -195,6 +199,25 @@ final class DesktopControlOverlay {
     private final class OverlayPanel: NSPanel {
         override var canBecomeKey: Bool { false }
         override var canBecomeMain: Bool { false }
+    }
+
+    private final class PressFeedbackButton: NSButton {
+        override func mouseDown(with event: NSEvent) {
+            animatePress(true)
+            super.mouseDown(with: event)
+            animatePress(false)
+        }
+
+        private func animatePress(_ down: Bool) {
+            guard let layer else { return }
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.12)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+            layer.setAffineTransform(down ? CGAffineTransform(scaleX: 0.88, y: 0.88) : .identity)
+            layer.backgroundColor = NSColor.black.withAlphaComponent(down ? 0.72 : 0.42).cgColor
+            layer.borderColor = NSColor.white.withAlphaComponent(down ? 0.42 : 0.18).cgColor
+            CATransaction.commit()
+        }
     }
 }
 

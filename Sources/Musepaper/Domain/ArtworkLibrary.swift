@@ -64,6 +64,10 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
     var atmosphere: PlaylistAtmosphere?
     /// Larger number wins when two enabled tasks claim the same screen. Nil = 1.
     var priority: Int?
+    /// Remaining shuffle-bag IDs. Empty / nil means refill from the current pool.
+    var shuffleQueueIDs: [UUID]?
+    /// Membership of the last pool; distinguishes new images from already played images.
+    var shufflePoolIDs: [UUID]?
     /// Legacy decode-only: old builds stored desktop/screensaver surfaces.
     var applyToDesktop: Bool?
     var applyToScreensaver: Bool?
@@ -112,6 +116,8 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         targetDisplayIDs: [String]? = nil,
         atmosphere: PlaylistAtmosphere? = .followGlobal,
         priority: Int? = nil,
+        shuffleQueueIDs: [UUID]? = nil,
+        shufflePoolIDs: [UUID]? = nil,
         applyToDesktop: Bool? = nil,
         applyToScreensaver: Bool? = nil,
         screensaverIdleSeconds: Int? = nil
@@ -128,6 +134,8 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         self.targetDisplayIDs = targetDisplayIDs
         self.atmosphere = atmosphere ?? .followGlobal
         self.priority = priority.map(Self.clampedPriority)
+        self.shuffleQueueIDs = shuffleQueueIDs
+        self.shufflePoolIDs = shufflePoolIDs
         self.applyToDesktop = applyToDesktop
         self.applyToScreensaver = applyToScreensaver
         self.screensaverIdleSeconds = screensaverIdleSeconds
@@ -192,15 +200,15 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
     func ownershipCaption(among playlists: [WallpaperPlaylist], displays: [DisplayProfile]) -> String {
         let available = displays.map(\.id)
         let wanted = resolvedTargetDisplayIDs(available: available)
-        if !enabled { return "暂停中，先不管屏" }
-        if wanted.isEmpty { return "还没有检测到屏幕" }
+        if !enabled { return L10n.tr("暂停中，先不管屏") }
+        if wanted.isEmpty { return L10n.tr("还没有检测到屏幕") }
         let owned = Self.ownedDisplayIDs(for: self, among: playlists, available: available)
         if owned.isEmpty {
             let blocker = wanted
                 .compactMap { Self.owner(of: $0, among: playlists, available: available)?.name }
                 .first
-            if let blocker { return "重叠的屏正由「\(blocker)」换" }
-            return "当前管不到屏"
+            if let blocker { return L10n.tr("重叠的屏正由「\(blocker)」换") }
+            return L10n.tr("当前管不到屏")
         }
         if owned.count == wanted.count {
             return targetCaption(displays: displays)
@@ -209,13 +217,13 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         let ownedText = ownedNames.isEmpty ? "\(owned.count) 块屏" : ownedNames.joined(separator: "、")
         let blocked = wanted.filter { !owned.contains($0) }
         let blocker = blocked.compactMap { Self.owner(of: $0, among: playlists, available: available)?.name }.first
-        if let blocker { return "现管\(ownedText)；其余由「\(blocker)」换" }
-        return "现管\(ownedText)"
+        if let blocker { return L10n.tr("现管\(ownedText)；其余由「\(blocker)」换") }
+        return L10n.tr("现管\(ownedText)")
     }
 
     func priorityCaption(among playlists: [WallpaperPlaylist]) -> String {
         let rank = Self.rank(of: id, among: playlists) ?? 1
-        return "第 \(rank) 优先"
+        return L10n.tr("第 \(rank) 优先")
     }
 
     var targetsAllDisplays: Bool {
@@ -265,19 +273,19 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         let available = displays.map(\.id)
         let ids = resolvedTargetDisplayIDs(available: available)
         if targetsAllDisplays || ids.count == available.count {
-            return ids.count <= 1 ? "当前屏幕" : "全部 \(ids.count) 块屏（可各不同）"
+            return ids.count <= 1 ? L10n.tr("当前屏幕") : L10n.tr("全部 \(ids.count) 块屏（可各不同）")
         }
         let names = ids.compactMap { id in displays.first(where: { $0.id == id })?.name }
-        if names.isEmpty { return "选定屏幕" }
+        if names.isEmpty { return L10n.tr("选定屏幕") }
         if names.count <= 2 { return names.joined(separator: "、") }
-        return "\(names.prefix(2).joined(separator: "、")) 等 \(names.count) 屏"
+        return L10n.tr("\(names.prefix(2).joined(separator: "、")) 等 \(names.count) 屏")
     }
 
     enum CodingKeys: String, CodingKey {
         case id, name, source, sourceID, order
         case intervalSeconds, intervalMinutes
         case enabled, lastArtworkID, lastArtworkIDsByDisplay
-        case targetDisplayIDs, atmosphere, priority
+        case targetDisplayIDs, atmosphere, priority, shuffleQueueIDs, shufflePoolIDs
         case applyToDesktop, applyToScreensaver, screensaverIdleSeconds
     }
 
@@ -301,6 +309,8 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         targetDisplayIDs = try c.decodeIfPresent([String].self, forKey: .targetDisplayIDs)
         atmosphere = try c.decodeIfPresent(PlaylistAtmosphere.self, forKey: .atmosphere) ?? .followGlobal
         priority = try c.decodeIfPresent(Int.self, forKey: .priority).map(Self.clampedPriority)
+        shuffleQueueIDs = try c.decodeIfPresent([UUID].self, forKey: .shuffleQueueIDs)
+        shufflePoolIDs = try c.decodeIfPresent([UUID].self, forKey: .shufflePoolIDs)
         applyToDesktop = try c.decodeIfPresent(Bool.self, forKey: .applyToDesktop)
         applyToScreensaver = try c.decodeIfPresent(Bool.self, forKey: .applyToScreensaver)
         screensaverIdleSeconds = try c.decodeIfPresent(Int.self, forKey: .screensaverIdleSeconds)
@@ -320,5 +330,37 @@ struct WallpaperPlaylist: Codable, Identifiable, Equatable, Sendable {
         try c.encodeIfPresent(targetDisplayIDs, forKey: .targetDisplayIDs)
         try c.encodeIfPresent(atmosphere, forKey: .atmosphere)
         try c.encodeIfPresent(priority, forKey: .priority)
+        try c.encodeIfPresent(shuffleQueueIDs, forKey: .shuffleQueueIDs)
+        try c.encodeIfPresent(shufflePoolIDs, forKey: .shufflePoolIDs)
+    }
+}
+
+enum PlaylistShuffle {
+    /// Persistent membership keeps consumed images out of the bag until it is exhausted.
+    static func takeNext(
+        poolIDs: [UUID],
+        queue: inout [UUID],
+        knownPool: inout [UUID],
+        avoiding: Set<UUID> = []
+    ) -> UUID? {
+        var seen = Set<UUID>()
+        let pool = poolIDs.filter { seen.insert($0).inserted }
+        let poolSet = Set(pool)
+        guard !pool.isEmpty else { queue = []; knownPool = []; return nil }
+        var queued = Set<UUID>()
+        queue.removeAll { !poolSet.contains($0) || !queued.insert($0).inserted }
+        let previousPool = Set(knownPool)
+        if queue.isEmpty {
+            queue = pool.shuffled()
+        } else if !previousPool.isEmpty {
+            queue.append(contentsOf: pool.filter { !previousPool.contains($0) }.shuffled())
+        }
+        knownPool = pool
+        if let index = queue.firstIndex(where: { !avoiding.contains($0) }) {
+            return queue.remove(at: index)
+        }
+        // Avoidance is best effort when only the currently displayed items remain.
+        // Finish the bag rather than discarding its tail and repeating consumed images.
+        return queue.removeFirst()
     }
 }

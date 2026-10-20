@@ -68,7 +68,7 @@ enum GeneratedImageSize: String, Codable, CaseIterable, Identifiable, Sendable {
     var menuLabel: String {
         switch self {
         case .automatic:
-            return "auto（仅官方 OpenAI）"
+            return L10n.tr("auto（仅官方 OpenAI）")
         default:
             return "\(pixelWidth)×\(pixelHeight) · \(aspectRatioLabel)"
         }

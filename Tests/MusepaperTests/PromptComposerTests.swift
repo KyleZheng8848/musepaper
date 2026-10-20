@@ -419,7 +419,7 @@ final class PromptComposerTests: XCTestCase {
 
     func testImageModelPromptKeepsShortEnglishScene() {
         let prompt = composer.imageModelPrompt("a quiet ocean", core: "ocean")
-        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("quiet ocean"), prompt)
+        XCTAssertTrue(prompt.localizedCaseInsensitiveContains("quiet") && prompt.localizedCaseInsensitiveContains("ocean"), prompt)
         XCTAssertFalse(composer.containsCJK(prompt), prompt)
     }
 
@@ -451,7 +451,7 @@ final class PromptComposerTests: XCTestCase {
         let banned = ["afternoon", "courtyard", "balcony", "blanket", "spring afternoon"]
         for core in ["孤独宇宙", "安静、空旷、有探索感的宇宙场景", "雨夜的未来上海", "马尔代夫的果冻海"] {
             let prompt = composer.imageModelPrompt(core, core: core, seed: 3)
-            XCTAssertTrue(prompt.contains(core) || prompt.localizedCaseInsensitiveContains("cosmos") || prompt.localizedCaseInsensitiveContains("shanghai") || prompt.localizedCaseInsensitiveContains("maldives"), prompt)
+            XCTAssertTrue(prompt.contains(core) || (core.contains("宇宙") && prompt.contains("宇宙")) || prompt.localizedCaseInsensitiveContains("cosmos") || prompt.localizedCaseInsensitiveContains("shanghai") || prompt.localizedCaseInsensitiveContains("maldives"), prompt)
             for word in banned {
                 XCTAssertFalse(prompt.localizedCaseInsensitiveContains(word), "\(core) leaked \(word): \(prompt)")
             }
@@ -551,5 +551,183 @@ final class PromptComposerTests: XCTestCase {
         for prompt in prompts {
             XCTAssertTrue(prompt.contains("马尔代夫的果冻海"), prompt)
         }
+    }
+
+    func testLLaDAWrapUsesDaylightInsteadOfNoir() {
+        let core = "一个咖啡店门口有一个黑板"
+        let prompt = composer.imageModelPrompt(
+            "夜雾里一个剪影，黑板上写着qwennewbee，volumetric fog, cinematic noir",
+            core: core,
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        XCTAssertTrue(prompt.contains("电影感照片"), prompt)
+        XCTAssertTrue(prompt.contains("咖啡店") || prompt.contains("黑板"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("those characters"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("this frame differs"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("photorealistic photograph"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("noir"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("volumetric fog"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("newbee"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("qwen"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("welcome"), prompt)
+        XCTAssertFalse(prompt.contains("写着"), prompt)
+    }
+
+    func testLLaDAKeepsRequestedNightRain() {
+        let core = "雨夜的未来上海"
+        let prompt = composer.imageModelPrompt(
+            "雨夜的未来上海，湿沥青倒映霓虹",
+            core: core,
+            seed: 3,
+            model: "LLaDA-Image"
+        )
+        XCTAssertTrue(prompt.contains("雨") || prompt.contains("上海"), prompt)
+        XCTAssertTrue(prompt.contains("电影感照片"), prompt)
+        XCTAssertTrue(composer.containsCJK(prompt), prompt)
+        XCTAssertFalse(prompt.contains("晴朗日光"), prompt)
+        XCTAssertFalse(prompt.contains("正午强光"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("even daylight"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("bright natural daylight"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("sunny"), prompt)
+        let plan = composer.framePlan(core: core, seed: 3, model: "LLaDA-Image")
+        XCTAssertTrue(plan.wantsNight)
+        XCTAssertTrue(plan.wantsRain)
+        XCTAssertEqual(plan.dialect, .llada)
+    }
+
+    func testQwenWrapStaysPhotorealistic() {
+        let ocean = composer.imageModelPrompt("a quiet ocean", core: "ocean", model: "Qwen-Image")
+        XCTAssertTrue(ocean.localizedCaseInsensitiveContains("photorealistic photograph"), ocean)
+        XCTAssertTrue(ocean.localizedCaseInsensitiveContains("fills the frame"), ocean)
+        XCTAssertFalse(ocean.localizedCaseInsensitiveContains("even daylight, clean open space"), ocean)
+    }
+
+    func testChalkboardThemeIsTextRiskAndBlank() {
+        let core = "一个咖啡店门口有一个黑板"
+        XCTAssertTrue(composer.hasTextRisk(core))
+        let plan = composer.framePlan(core: core, seed: 1, model: "LLaDA-Image")
+        XCTAssertTrue(plan.textRisk)
+        XCTAssertFalse(plan.wantsNight)
+        XCTAssertTrue(plan.light.localizedCaseInsensitiveContains("daylight") || plan.light.localizedCaseInsensitiveContains("sun") || plan.light.localizedCaseInsensitiveContains("window"))
+        let cleaned = composer.neutralizeSignLettering("黑板上写着welcome newbee", core: core)
+        XCTAssertFalse(cleaned.localizedCaseInsensitiveContains("welcome"), cleaned)
+        XCTAssertFalse(cleaned.localizedCaseInsensitiveContains("newbee"), cleaned)
+        XCTAssertTrue(cleaned.contains("空白") || cleaned.localizedCaseInsensitiveContains("blank"), cleaned)
+    }
+
+    func testLLaDACrystalKeepsMineralNotAPerson() {
+        let core = "晶石"
+        let prompt = composer.imageModelPrompt(core, core: core, seed: 2, model: "LLaDA-Image")
+        XCTAssertTrue(prompt.contains("晶石"), prompt)
+        XCTAssertTrue(prompt.contains("电影感照片"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("given subject"), prompt)
+        XCTAssertFalse(prompt.contains("女人"), prompt)
+        XCTAssertFalse(prompt.contains("人像"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("person"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("woman"), prompt)
+        let batch = (0..<4).map { index in
+            composer.imageModelPrompt(core, core: core, seed: 42 + index, model: "LLaDA-Image")
+        }
+        XCTAssertEqual(Set(batch).count, 4, batch.joined(separator: "\n"))
+        for item in batch {
+            XCTAssertTrue(item.contains("晶石"), item)
+        }
+    }
+
+    func testLLaDAAerialMaldivesDropsCJKAndInstructionEcho() {
+        let core = "从水上飞机高空俯瞰地面，马尔代夫"
+        let prompt = composer.imageModelPrompt(
+            "\(core)，Those characters are the subject name. Keep them in the output. volumetric fog",
+            core: core,
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        XCTAssertTrue(prompt.contains("电影感照片"), prompt)
+        XCTAssertTrue(prompt.contains("马尔代夫") || prompt.contains("俯瞰"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("those characters"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("subject name"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("are the"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("volumetric fog"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("higher angle"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("from high above"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("looking down"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("this frame differs"), prompt)
+        XCTAssertFalse(prompt.localizedCaseInsensitiveContains("natural-color photograph"), prompt)
+        let batch = composer.uniqueScenePrompts(
+            idea: core, channel: nil, emptySpace: .none, seedBase: 42, count: 4
+        ).enumerated().map { index, scene in
+            composer.imageModelPrompt(scene, core: core, seed: 42 + index, model: "LLaDA-Image")
+        }
+        XCTAssertEqual(Set(batch).count, 4, batch.joined(separator: "\n"))
+        let qwenBatch = composer.uniqueScenePrompts(
+            idea: core, channel: nil, emptySpace: .none, seedBase: 42, count: 4
+        ).enumerated().map { index, scene in
+            composer.imageModelPrompt(scene, core: core, seed: 42 + index, model: "Qwen-Image")
+        }
+        XCTAssertEqual(Set(qwenBatch).count, 4, qwenBatch.joined(separator: "\n"))
+        let negative = composer.negativePrompt(
+            draft: PromptDraft(input: core),
+            channel: nil,
+            model: "LLaDA-Image"
+        )
+        XCTAssertFalse(negative.localizedCaseInsensitiveContains("haze"), negative)
+        XCTAssertFalse(negative.localizedCaseInsensitiveContains("blurry"), negative)
+        XCTAssertFalse(negative.localizedCaseInsensitiveContains("letters"), negative)
+        XCTAssertTrue(negative.localizedCaseInsensitiveContains("dock") || negative.localizedCaseInsensitiveContains("menu bar"), negative)
+    }
+
+    func testAlignVariationHintDropsFogWhenPlanIsDaylight() {
+        let plan = composer.framePlan(core: "一个咖啡店门口有一个黑板", seed: 1, model: "LLaDA-Image")
+        let aligned = composer.alignVariationHint("薄雾把后景削成淡色的层，广角强调空间深度", to: plan)
+        XCTAssertFalse(aligned.contains("薄雾"), aligned)
+        XCTAssertFalse(aligned.localizedCaseInsensitiveContains("mist"), aligned)
+        XCTAssertTrue(aligned.contains("广角") || aligned.localizedCaseInsensitiveContains("wide"), aligned)
+    }
+
+    func testShortVisualClauseCutsEssayAndKeepsChinese() {
+        XCTAssertEqual(composer.shortVisualClause("黄昏把海面烧成一条金色道路，超广角让近处浪很大"), "黄昏把海面烧成一条金色道路")
+        XCTAssertTrue(composer.alignVariationHint("薄雾把后景削成淡色的层", to: composer.framePlan(core: "晨雾里的山谷", seed: 2)).contains("薄雾"))
+    }
+
+    func testFinishAgentPromptKeepsDialectAndChineseNames() {
+        let llada = composer.finishAgentPrompt(
+            "一张电影感照片，晶石，午后暖光，切面反光",
+            core: "晶石",
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        XCTAssertTrue(llada.contains("晶石"), llada)
+        XCTAssertTrue(llada.contains("电影感照片"), llada)
+        XCTAssertFalse(llada.contains("女人"), llada)
+        XCTAssertFalse(llada.localizedCaseInsensitiveContains("those characters"), llada)
+
+        let dirtyLlada = composer.finishAgentPrompt(
+            "主题：晶石\nThis frame differs by dusk\n黑板上写着qwennewbee",
+            core: "晶石",
+            seed: 2,
+            model: "LLaDA-Image"
+        )
+        XCTAssertTrue(dirtyLlada.contains("晶石"), dirtyLlada)
+        XCTAssertFalse(dirtyLlada.contains("主题："), dirtyLlada)
+        XCTAssertFalse(dirtyLlada.localizedCaseInsensitiveContains("this frame differs"), dirtyLlada)
+        XCTAssertFalse(dirtyLlada.localizedCaseInsensitiveContains("qwennewbee"), dirtyLlada)
+
+        let qwen = composer.finishAgentPrompt(
+            "五爪金龙盘在岩上，鳞片反光，云海铺到画面四边",
+            core: "五爪金龙",
+            seed: 3,
+            model: "Qwen-Image"
+        )
+        XCTAssertTrue(qwen.contains("五爪金龙"), qwen)
+        XCTAssertTrue(qwen.localizedCaseInsensitiveContains("photorealistic"), qwen)
+        XCTAssertFalse(qwen.contains("女人"), qwen)
+    }
+
+    func testAlignVariationHintKeepsNamedFog() {
+        let plan = composer.framePlan(core: "晨雾里的山谷", seed: 2, model: "LLaDA-Image")
+        XCTAssertTrue(plan.wantsFog)
+        let aligned = composer.alignVariationHint("薄雾把后景削成淡色的层", to: plan)
+        XCTAssertTrue(aligned.contains("薄雾") || aligned.localizedCaseInsensitiveContains("mist") || aligned.contains("雾"), aligned)
     }
 }

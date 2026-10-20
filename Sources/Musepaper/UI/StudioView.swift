@@ -2,9 +2,11 @@ import AppKit
 import SwiftUI
 
 struct StudioView: View {
+    @Environment(\.locale) private var interfaceLocale
     private enum Page { case create, library, playlists, settings }
 
     @StateObject var model = StudioViewModel()
+    @StateObject private var language = LanguagePreferences.shared
     @State private var page: Page = .create
     @State private var showingCollectionEditor = false
     @State private var playlistEditorTarget: PlaylistEditorTarget?
@@ -76,6 +78,11 @@ struct StudioView: View {
         .frame(minWidth: 1100, minHeight: 800)
         .preferredColorScheme(.dark)
         .tint(MuseTheme.amber)
+        .onChange(of: language.selection) { _, _ in model.refreshInterfaceLanguage() }
+        .onReceive(NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)) { _ in
+            language.refreshSystemLanguage()
+            model.refreshInterfaceLanguage()
+        }
         .sheet(isPresented: $showingCollectionEditor) {
             CollectionEditor(tasks: model.channels, availableTags: model.allArtworkTags) { model.saveCollection($0) }
         }
@@ -104,6 +111,7 @@ struct StudioView: View {
         .onReceive(NotificationCenter.default.publisher(for: .musepaperOpenSettings)) { _ in
             page = .settings
         }
+        .environment(\.locale, language.selection.locale)
     }
 
     private var topBar: some View {
@@ -119,10 +127,10 @@ struct StudioView: View {
             }
 
             HStack(spacing: 2) {
-                topTab("生图", target: .create)
-                topTab("自动换壁纸", target: .playlists)
-                topTab("作品集", target: .library)
-                topTab("设置", target: .settings)
+                topTab(L10n.tr("生图"), target: .create)
+                topTab(L10n.tr("自动换壁纸"), target: .playlists)
+                topTab(L10n.tr("作品集"), target: .library)
+                topTab(L10n.tr("设置"), target: .settings)
             }
 
             Spacer(minLength: 12)
@@ -131,7 +139,7 @@ struct StudioView: View {
                 Button {
                     model.openUpdateDownload()
                 } label: {
-                    Text("↑ 更新 \(latest)")
+                    Text(L10n.tr("↑ 更新 \(latest)"))
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.black)
                         .padding(.horizontal, 10)
@@ -139,10 +147,10 @@ struct StudioView: View {
                         .background(Capsule().fill(MuseTheme.amber))
                 }
                 .buttonStyle(.plain)
-                .help("有新版本，点击下载本机芯片对应安装包")
+                .help(L10n.tr("有新版本，点击下载本机芯片对应安装包"))
                 .contextMenu {
-                    Button("打开设置 · 关于") { page = .settings }
-                    Button("稍后提醒") { model.dismissUpdateBanner() }
+                    Button(L10n.tr("打开设置 · 关于")) { page = .settings }
+                    Button(L10n.tr("稍后提醒")) { model.dismissUpdateBanner() }
                 }
             }
 
@@ -164,7 +172,7 @@ struct StudioView: View {
                 .overlay(Capsule().stroke(MuseTheme.border, lineWidth: 1))
             }
             .buttonStyle(.plain)
-            .help("连接状态 · 点此打开设置")
+            .help(L10n.tr("连接状态 · 点此打开设置"))
         }
         .padding(.horizontal, 16)
         .frame(height: 44)
@@ -180,10 +188,10 @@ struct StudioView: View {
     private func updateBanner(_ update: UpdateCheckResult) -> some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("有新版本 \(update.latest ?? "")")
+                Text(L10n.tr("有新版本 \(update.latest ?? "")"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(MuseTheme.ink)
-                Text("当前 \(update.current) · 浏览器下载后按芯片安装（不会静默替换）")
+                Text(L10n.tr("当前 \(update.current) · 浏览器下载后按芯片安装（不会静默替换）"))
                     .font(.caption2)
                     .foregroundStyle(MuseTheme.muted)
                 if !update.highlights.isEmpty {
@@ -194,13 +202,13 @@ struct StudioView: View {
                 }
             }
             Spacer(minLength: 8)
-            Button("更新") { model.openUpdateDownload() }
+            Button(L10n.tr("更新")) { model.openUpdateDownload() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
-            Button("详情") { page = .settings }
+            Button(L10n.tr("详情")) { page = .settings }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-            Button("稍后") { model.dismissUpdateBanner() }
+            Button(L10n.tr("稍后")) { model.dismissUpdateBanner() }
                 .buttonStyle(.plain)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MuseTheme.muted)
@@ -258,6 +266,8 @@ struct StudioView: View {
                     .clipped()
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+            .animation(.easeOut(duration: 0.22), value: creationWorkbenchBanner)
+            .animation(.easeOut(duration: 0.22), value: model.isCreationBusy)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -278,7 +288,7 @@ struct StudioView: View {
     private var seriesRail: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("系列")
+                Text(L10n.tr("系列"))
                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .tracking(1.2)
                     .foregroundStyle(MuseTheme.muted)
@@ -294,7 +304,7 @@ struct StudioView: View {
                         .background(Circle().fill(Color.white.opacity(0.06)))
                 }
                 .buttonStyle(.plain)
-                .help("新开一个系列：写下画面，再点出图")
+                .help(L10n.tr("新开一个系列：写下画面，再点出图"))
             }
             .padding(.horizontal, 12)
             .padding(.top, 10)
@@ -334,11 +344,11 @@ struct StudioView: View {
                     .foregroundStyle(selected ? MuseTheme.amber : MuseTheme.muted)
                     .frame(width: 14)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("新系列")
+                    Text(L10n.tr("新系列"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MuseTheme.ink)
                         .lineLimit(1)
-                    Text("写一句再出图")
+                    Text(L10n.tr("写一句再出图"))
                         .font(.system(size: 10))
                         .foregroundStyle(MuseTheme.muted)
                         .lineLimit(1)
@@ -357,15 +367,15 @@ struct StudioView: View {
             )
         }
         .buttonStyle(.plain)
-        .help("新开一个系列：写下画面，再点出图")
+        .help(L10n.tr("新开一个系列：写下画面，再点出图"))
     }
 
     private func seriesSubtitle(_ channel: InspirationChannel) -> String {
         let count = model.seriesArtworkCount(channel)
         if channel.resolvedScheduleEnabled {
-            return count > 0 ? "定时 · \(count) 张" : "定时"
+            return count > 0 ? L10n.tr("定时 · \(count) 张") : L10n.tr("定时")
         }
-        return count > 0 ? "\(count) 张" : "还没出图"
+        return count > 0 ? L10n.tr("\(count) 张") : L10n.tr("还没出图")
     }
 
     private func beginSeriesRename(_ channel: InspirationChannel) {
@@ -399,7 +409,7 @@ struct StudioView: View {
                     .frame(width: 14)
                 VStack(alignment: .leading, spacing: 2) {
                     if renaming {
-                        TextField("系列名", text: $seriesRenameDraft)
+                        TextField(L10n.tr("系列名"), text: $seriesRenameDraft)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MuseTheme.ink)
                             .textFieldStyle(.plain)
@@ -446,15 +456,15 @@ struct StudioView: View {
             }
         }
         .buttonStyle(.plain)
-        .help(renaming ? "回车保存名字" : title)
+        .help(renaming ? L10n.tr("回车保存名字") : title)
         .contextMenu {
             if let channel {
-                Button("改名字") { beginSeriesRename(channel) }
-                Button("自动出图") {
+                Button(L10n.tr("改名字")) { beginSeriesRename(channel) }
+                Button(L10n.tr("自动出图")) {
                     model.selectChannel(channel.id)
                     showingScheduleFor = channel.id
                 }
-                Button("删除这个系列", role: .destructive) { model.deleteChannel(channel.id) }
+                Button(L10n.tr("删除这个系列"), role: .destructive) { model.deleteChannel(channel.id) }
             }
         }
         .simultaneousGesture(TapGesture(count: 2).onEnded {
@@ -474,6 +484,7 @@ struct StudioView: View {
                     .padding(.horizontal, 14)
                     .frame(height: CreationLayout.bannerHeight)
                     .background(MuseTheme.amber.opacity(0.10))
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             VStack(spacing: 6) {
@@ -516,117 +527,121 @@ struct StudioView: View {
 
                     if !model.activeCandidates.isEmpty {
                         Button { model.applySelectedCandidate() } label: {
-                            Text("设为壁纸")
+                            Text(L10n.tr("设为壁纸"))
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.regular)
-                        .frame(width: 100, height: CreationLayout.actionHeight)
+                        .frame(width: L10n.isChinese ? 100 : 126, height: CreationLayout.actionHeight)
                         .disabled(!model.canApplySelected)
                     }
                 }
 
-                HStack(spacing: 8) {
-                    Picker("文生图模型", selection: Binding(
-                        get: { model.activeModelConfigurationID ?? model.modelConfigurations.first?.id ?? UUID() },
-                        set: { model.selectModelConfiguration($0) }
-                    )) {
-                        ForEach(model.modelConfigurations) { configuration in
-                            Text(model.imageModelPickerTitle(for: configuration)).tag(configuration.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(maxWidth: 190, alignment: .leading)
-
-                    CompactCountField(
-                        value: model.batchSize,
-                        onChange: { model.setBatchSize($0) }
-                    )
-
-                    if model.activeModelConfiguration?.provider != .demo {
-                        Picker("尺寸", selection: Binding(
-                            get: { model.activeModelConfiguration?.size ?? .qwenLandscapeHD },
-                            set: { model.setActiveImageSize($0) }
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        Picker(L10n.tr("文生图模型"), selection: Binding(
+                            get: { model.activeModelConfigurationID ?? model.modelConfigurations.first?.id ?? UUID() },
+                            set: { model.selectModelConfiguration($0) }
                         )) {
-                            ForEach(GeneratedImageSize.menuOrdered) { Text($0.menuLabel).tag($0) }
+                            ForEach(model.modelConfigurations) { configuration in
+                                Text(model.imageModelPickerTitle(for: configuration)).tag(configuration.id)
+                            }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
-                        .frame(maxWidth: 170, alignment: .leading)
+                        .frame(maxWidth: 190, alignment: .leading)
 
-                        Picker("质量", selection: Binding(
-                            get: { model.activeModelConfiguration?.quality ?? .high },
-                            set: { model.setActiveImageQuality($0) }
-                        )) {
-                            ForEach(ImageQuality.allCases) { Text($0.rawValue).tag($0) }
+                        CompactCountField(
+                            value: model.batchSize,
+                            onChange: { model.setBatchSize($0) }
+                        )
+
+                        if model.activeModelConfiguration?.provider != .demo {
+                            Picker(L10n.tr("尺寸"), selection: Binding(
+                                get: { model.activeModelConfiguration?.size ?? .qwenLandscapeHD },
+                                set: { model.setActiveImageSize($0) }
+                            )) {
+                                ForEach(GeneratedImageSize.menuOrdered) { Text($0.menuLabel).tag($0) }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .frame(maxWidth: 170, alignment: .leading)
+
+                            Picker(L10n.tr("质量"), selection: Binding(
+                                get: { model.activeModelConfiguration?.quality ?? .high },
+                                set: { model.setActiveImageQuality($0) }
+                            )) {
+                                ForEach(ImageQuality.allCases) { Text($0.rawValue.localized).tag($0) }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .frame(width: 88, alignment: .leading)
+
+                            Toggle("Agent", isOn: Binding(
+                                get: { model.promptAgentRouting.enabled },
+                                set: { model.setPromptAgentEnabled($0) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                            .font(.caption.weight(.semibold))
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(width: 72, alignment: .leading)
 
-                        Toggle("Agent", isOn: Binding(
-                            get: { model.promptAgentRouting.enabled },
-                            set: { model.setPromptAgentEnabled($0) }
+                        Toggle(L10n.tr("参考图"), isOn: Binding(
+                            get: { model.useReferenceImages },
+                            set: { model.setUseReferenceImages($0) }
                         ))
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                         .font(.caption.weight(.semibold))
-                    }
 
-                    Toggle("参考图", isOn: Binding(
-                        get: { model.useReferenceImages },
-                        set: { model.setUseReferenceImages($0) }
-                    ))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .font(.caption.weight(.semibold))
-
-                    if model.useReferenceImages {
-                        ForEach(model.displayedReferencePaths.prefix(2), id: \.self) { path in
-                            CachedWallpaperImage(path: path, role: .thumbnail)
-                                .frame(width: 26, height: 16)
-                                .clipShape(RoundedRectangle(cornerRadius: 3))
-                        }
-                        Button("换") { showingReferencePicker = true }
-                            .buttonStyle(.plain)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(MuseTheme.amber)
-                    }
-
-                    if let channel = model.selectedChannel {
-                        scheduleChip(channel)
-                    }
-
-                    WallpaperTargetPicker(model: model, width: 120)
-
-                    Spacer(minLength: 6)
-
-                    if !model.activeCandidates.isEmpty {
-                        Button {
-                            model.regenerateSelectedCandidate()
-                        } label: {
-                            Text(model.isGenerating && model.generationTotal == 1 ? "重出中…" : "重新生成")
-                        }
-                        .buttonStyle(.plain)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(MuseTheme.muted)
-                        .disabled(!model.canRegenerateSelected)
-
-                        if model.canApplySelected {
-                            Button("按这张再出") { model.continueFromSelected() }
+                        if model.useReferenceImages {
+                            ForEach(model.displayedReferencePaths.prefix(2), id: \.self) { path in
+                                CachedWallpaperImage(path: path, role: .thumbnail)
+                                    .frame(width: 26, height: 16)
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                            Button(L10n.tr("换")) { showingReferencePicker = true }
                                 .buttonStyle(.plain)
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(MuseTheme.muted)
-                                .disabled(model.isCreationBusy)
+                                .foregroundStyle(MuseTheme.amber)
                         }
-                    }
 
-                    Button(model.activeCandidates.isEmpty ? "撤回桌面" : "撤回") { model.restorePrevious() }
-                        .buttonStyle(.plain)
-                        .font(.caption)
-                        .foregroundStyle(MuseTheme.muted)
+                        if let channel = model.selectedChannel {
+                            scheduleChip(channel)
+                        }
+
+                        WallpaperTargetPicker(model: model, width: 120)
+
+                        Spacer(minLength: 6)
+
+                        if !model.activeCandidates.isEmpty {
+                            Button {
+                                model.regenerateSelectedCandidate()
+                            } label: {
+                                Text(model.isGenerating && model.generationTotal == 1 ? L10n.tr("重出中…") : L10n.tr("重新生成"))
+                            }
+                            .buttonStyle(.plain)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(MuseTheme.muted)
+                            .disabled(!model.canRegenerateSelected)
+
+                            if model.canApplySelected {
+                                Button(L10n.tr("按这张再出")) { model.continueFromSelected() }
+                                    .buttonStyle(.plain)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(MuseTheme.muted)
+                                    .disabled(model.isCreationBusy)
+                            }
+                        }
+
+                        Button(model.activeCandidates.isEmpty ? L10n.tr("撤回桌面") : L10n.tr("撤回")) { model.restorePrevious() }
+                            .buttonStyle(.plain)
+                            .font(.caption)
+                            .foregroundStyle(MuseTheme.muted)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
                 }
+                .scrollIndicators(.hidden)
                 .frame(height: CreationLayout.controlRowHeight)
             }
             .padding(.horizontal, 12)
@@ -648,7 +663,7 @@ struct StudioView: View {
             HStack(spacing: 4) {
                 Image(systemName: channel.resolvedScheduleEnabled ? "clock.fill" : "clock")
                     .font(.caption2.weight(.bold))
-                Text(channel.resolvedScheduleEnabled ? model.scheduleSummary(for: channel) : "定时")
+                Text(channel.resolvedScheduleEnabled ? model.scheduleSummary(for: channel) : L10n.tr("定时"))
                     .lineLimit(1)
             }
             .font(.caption.weight(.semibold))
@@ -663,8 +678,8 @@ struct StudioView: View {
     }
 
     private var composerPlaceholder: String {
-        if model.isBlankSeriesSession { return "写下想看的画面，例如：温暖的春天的悠闲午后" }
-        return "这就是这个系列的灵感词，改了会自动记住"
+        if model.isBlankSeriesSession { return L10n.tr("写下想看的画面，例如：温暖的春天的悠闲午后") }
+        return L10n.tr("这就是这个系列的灵感词，改了会自动记住")
     }
 
     private func requestGeneration() {
@@ -683,9 +698,14 @@ struct StudioView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
 
-            if model.latestImageURL == nil {
+            if model.latestImageURL == nil || model.isCreationBusy {
                 creationStageBanner()
                     .padding(.horizontal, 28)
+                    .padding(.vertical, 16)
+                    .background(.black.opacity(model.latestImageURL == nil ? 0 : 0.42), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.bottom, model.latestImageURL == nil ? 0 : 28)
+                    .frame(maxHeight: .infinity, alignment: model.latestImageURL == nil ? .center : .bottom)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
 
             if model.activeCandidates.count > 1 {
@@ -706,7 +726,7 @@ struct StudioView: View {
         .onTapGesture(count: 2) {
             if model.canApplySelected { model.applySelectedCandidate() }
         }
-        .help(model.canApplySelected ? "双击设为壁纸 · ⌥⌘← ⌥⌘→ 切换候选" : model.creationStageDetail)
+        .help(model.canApplySelected ? L10n.tr("双击设为壁纸 · ⌥⌘← ⌥⌘→ 切换候选") : model.creationStageDetail)
     }
 
     private func candidateNavChevron(systemName: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -729,6 +749,7 @@ struct StudioView: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 18, weight: .light))
                 .foregroundStyle(MuseTheme.amber.opacity(0.85))
+                .symbolEffect(.pulse, options: .repeating, isActive: model.isCreationBusy)
             Text(model.creationStageTitle)
                 .font(.system(size: 18, weight: .semibold, design: .serif))
                 .foregroundStyle(Color.white.opacity(0.92))
@@ -795,7 +816,7 @@ struct StudioView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(model.canSelectPreviousCandidate ? MuseTheme.ink : MuseTheme.muted)
                 .disabled(!model.canSelectPreviousCandidate)
-                .help("最新一张")
+                .help(L10n.tr("最新一张"))
 
                 Button {
                     model.selectAdjacentCandidate(-1)
@@ -807,7 +828,7 @@ struct StudioView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(model.canSelectPreviousCandidate ? MuseTheme.amber : MuseTheme.muted)
                 .disabled(!model.canSelectPreviousCandidate)
-                .help("更新一张 · ⌥⌘←")
+                .help(L10n.tr("更新一张 · ⌥⌘←"))
             } else {
                 Button {
                     model.selectAdjacentCandidate(1)
@@ -819,7 +840,7 @@ struct StudioView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(model.canSelectNextCandidate ? MuseTheme.amber : MuseTheme.muted)
                 .disabled(!model.canSelectNextCandidate)
-                .help("更早一张 · ⌥⌘→")
+                .help(L10n.tr("更早一张 · ⌥⌘→"))
 
                 Button {
                     model.selectLastCandidate()
@@ -830,7 +851,7 @@ struct StudioView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(model.canSelectNextCandidate ? MuseTheme.ink : MuseTheme.muted)
                 .disabled(!model.canSelectNextCandidate)
-                .help("最早一张")
+                .help(L10n.tr("最早一张"))
             }
 
             if !model.candidatePositionCaption.isEmpty, leading == false {
@@ -850,6 +871,7 @@ struct StudioView: View {
             if model.isCreationBusy {
                 Button(action: { model.cancelCreation() }) {
                     Label(model.stopActionTitle, systemImage: "stop.fill")
+                        .lineLimit(1).minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -858,6 +880,7 @@ struct StudioView: View {
             } else {
                 Button(action: requestGeneration) {
                     Label(model.generateActionTitle, systemImage: "sparkles")
+                        .lineLimit(1).minimumScaleFactor(0.8)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -901,26 +924,32 @@ struct StudioView: View {
             if model.canApplySelected { model.applySelectedCandidate() }
         })
         .contextMenu {
-            Button("设为壁纸") {
+            Button(L10n.tr("设为壁纸")) {
                 model.selectCandidate(record.id)
                 model.applySelectedCandidate()
             }
             .disabled(record.imagePath == nil)
-            Button("重新生成") {
+            Button(L10n.tr("重新生成")) {
                 model.selectCandidate(record.id)
                 model.regenerateSelectedCandidate()
             }
-            Button("删除这张", role: .destructive) { model.deleteRecord(record.id) }
+            Button(L10n.tr("删除这张"), role: .destructive) { model.deleteRecord(record.id) }
         }
     }
 
     private var loadingTile: some View {
-        ZStack {
-            Color.white.opacity(0.035)
-            ProgressView().controlSize(.small)
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: false)) { timeline in
+            let pulse = 0.5 + 0.5 * sin(timeline.date.timeIntervalSinceReferenceDate * 3.2)
+            ZStack {
+                Color.white.opacity(0.03 + 0.05 * pulse)
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(MuseTheme.amber.opacity(0.18 + 0.32 * pulse), lineWidth: 1.2)
+                ProgressView().controlSize(.small)
+                    .tint(MuseTheme.amber)
+                    .scaleEffect(0.92 + 0.08 * pulse)
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(MuseTheme.border))
     }
 
     // MARK: - Library
@@ -930,20 +959,20 @@ struct StudioView: View {
             VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .top) {
                     pageHeader(
-                        model.libraryShowsTrash ? "回收箱" : "作品集",
+                        model.libraryShowsTrash ? L10n.tr("回收箱") : L10n.tr("作品集"),
                         subtitle: model.libraryShowsTrash
-                            ? "还原回作品集，或永久删除。永久删除会清掉磁盘文件。"
-                            : "点开大图浏览。删除会进回收箱，可还原。"
+                            ? L10n.tr("还原回作品集，或永久删除。永久删除会清掉磁盘文件。")
+                            : L10n.tr("点开大图浏览。删除会进回收箱，可还原。")
                     )
                     Spacer()
                     if !model.libraryShowsTrash {
                         WallpaperTargetPicker(model: model, width: 160)
                     }
                     if model.libraryShowsTrash {
-                        Button("清空回收箱", role: .destructive) { model.emptyTrash() }
+                        Button(L10n.tr("清空回收箱"), role: .destructive) { model.emptyTrash() }
                             .disabled(model.trashedArtworks.isEmpty)
                     } else {
-                        Button { showingCollectionEditor = true } label: { Label("做一组筛选", systemImage: "folder.badge.plus") }
+                        Button { showingCollectionEditor = true } label: { Label(L10n.tr("做一组筛选"), systemImage: "folder.badge.plus") }
                             .buttonStyle(.borderedProminent)
                     }
                 }
@@ -953,37 +982,37 @@ struct StudioView: View {
                     Text(model.libraryCountCaption)
                         .font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.muted)
                     if !model.libraryShowsTrash {
-                        Picker("排序", selection: Binding(
+                        Picker(L10n.tr("排序"), selection: Binding(
                             get: { model.librarySortOrder },
                             set: { model.setLibrarySortOrder($0) }
                         )) {
-                            ForEach(LibrarySortOrder.allCases) { Text($0.rawValue).tag($0) }
+                            ForEach(LibrarySortOrder.allCases) { Text($0.rawValue.localized).tag($0) }
                         }
                         .labelsHidden()
                         .pickerStyle(.menu)
                         .frame(maxWidth: 120)
-                        .help("按创作时间排序")
+                        .help(L10n.tr("按创作时间排序"))
                     }
                     Spacer()
                     if model.isRetagging {
-                        Text("重打标签 \(model.retagDone)/\(model.retagTotal)")
+                        Text(L10n.tr("重打标签 \(model.retagDone)/\(model.retagTotal)"))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(MuseTheme.amber)
-                        Button("停止") { model.cancelRetag() }
+                        Button(L10n.tr("停止")) { model.cancelRetag() }
                             .buttonStyle(.bordered)
                             .controlSize(.regular)
                     } else if !model.libraryShowsTrash, !model.selectedLibraryTags.isEmpty, !model.filteredArtworks.isEmpty {
                         Button {
                             model.retagFilteredArtworks()
                         } label: {
-                            Label("重打标签 (\(model.filteredArtworks.count))", systemImage: "tag")
+                            Label(L10n.tr("重打标签 (\(model.filteredArtworks.count))"), systemImage: "tag")
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.regular)
-                        .help("对当前筛选出的作品重新打标签；Agent 开启时优先用 AI，否则本地规则")
+                        .help(L10n.tr("对当前筛选出的作品重新打标签；Agent 开启时优先用 AI，否则本地规则"))
                     }
                     if !model.selectedLibraryTags.isEmpty {
-                        Button("清除标签筛选") { model.selectedLibraryTags.removeAll() }
+                        Button(L10n.tr("清除标签筛选")) { model.selectedLibraryTags.removeAll() }
                             .buttonStyle(.bordered)
                             .controlSize(.regular)
                             .museHitMinHeight(MuseHit.chip)
@@ -1012,7 +1041,7 @@ struct StudioView: View {
                     model.showLibraryTrash(false)
                     model.activeCollectionID = nil
                 } label: {
-                    Label("全部图", systemImage: "photo.on.rectangle.angled")
+                    Label(L10n.tr("全部图"), systemImage: "photo.on.rectangle.angled")
                         .padding(.horizontal, 13).frame(height: 38)
                         .background(Capsule().fill(!model.libraryShowsTrash && model.activeCollectionID == nil ? MuseTheme.amber : MuseTheme.panel))
                         .foregroundStyle(!model.libraryShowsTrash && model.activeCollectionID == nil ? .black : MuseTheme.ink)
@@ -1030,12 +1059,12 @@ struct StudioView: View {
                         .padding(.horizontal, 13).frame(height: 38)
                         .background(Capsule().fill(!model.libraryShowsTrash && model.activeCollectionID == collection.id ? MuseTheme.amber : MuseTheme.panel))
                         .foregroundStyle(!model.libraryShowsTrash && model.activeCollectionID == collection.id ? .black : MuseTheme.ink)
-                    }.buttonStyle(.plain).contextMenu { Button("删除作品集", role: .destructive) { model.deleteCollection(collection.id) } }
+                    }.buttonStyle(.plain).contextMenu { Button(L10n.tr("删除作品集"), role: .destructive) { model.deleteCollection(collection.id) } }
                 }
                 Button { model.showLibraryTrash(true) } label: {
                     HStack(spacing: 7) {
                         Image(systemName: "trash")
-                        Text("回收箱")
+                        Text(L10n.tr("回收箱"))
                         if !model.trashedArtworks.isEmpty {
                             Text("\(model.trashedArtworks.count)")
                                 .foregroundStyle(model.libraryShowsTrash ? Color.black.opacity(0.55) : MuseTheme.muted)
@@ -1060,13 +1089,13 @@ struct StudioView: View {
                     .tracking(1)
                     .foregroundStyle(MuseTheme.muted)
                 if !model.selectedLibraryTags.isEmpty {
-                    Text("已选 \(model.selectedLibraryTags.count)")
+                    Text(L10n.tr("已选 \(model.selectedLibraryTags.count)"))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(MuseTheme.moss)
                 }
                 Spacer(minLength: 0)
                 if model.allArtworkTags.count > 36 {
-                    Button(libraryTagsExpanded ? "收起" : "全部 \(model.allArtworkTags.count)") {
+                    Button(libraryTagsExpanded ? L10n.tr("收起") : L10n.tr("全部 \(model.allArtworkTags.count)")) {
                         libraryTagsExpanded.toggle()
                     }
                     .buttonStyle(.plain)
@@ -1114,18 +1143,18 @@ struct StudioView: View {
     private var emptyLibrary: some View {
         VStack(spacing: 13) {
             Image(systemName: "rectangle.stack.badge.plus").font(.system(size: 36, weight: .light)).foregroundStyle(MuseTheme.amber)
-            Text("还没有图").font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-            Text("去生图页出一组，就会出现在这里。").font(.callout).foregroundStyle(MuseTheme.muted)
-            Button("去生图") { page = .create }.buttonStyle(.borderedProminent)
+            Text(L10n.tr("还没有图")).font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+            Text(L10n.tr("去生图页出一组，就会出现在这里。")).font(.callout).foregroundStyle(MuseTheme.muted)
+            Button(L10n.tr("去生图")) { page = .create }.buttonStyle(.borderedProminent)
         }.frame(maxWidth: .infinity, minHeight: 360).musePanel(radius: 22)
     }
 
     private var emptyTrash: some View {
         VStack(spacing: 13) {
             Image(systemName: "trash").font(.system(size: 36, weight: .light)).foregroundStyle(MuseTheme.muted)
-            Text("回收箱是空的").font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-            Text("删除的作品会先到这里，可还原或永久删除。").font(.callout).foregroundStyle(MuseTheme.muted)
-            Button("回作品集") { model.showLibraryTrash(false) }.buttonStyle(.borderedProminent)
+            Text(L10n.tr("回收箱是空的")).font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+            Text(L10n.tr("删除的作品会先到这里，可还原或永久删除。")).font(.callout).foregroundStyle(MuseTheme.muted)
+            Button(L10n.tr("回作品集")) { model.showLibraryTrash(false) }.buttonStyle(.borderedProminent)
         }.frame(maxWidth: .infinity, minHeight: 360).musePanel(radius: 22)
     }
 
@@ -1150,8 +1179,8 @@ struct StudioView: View {
                     }
             }
             .buttonStyle(.plain)
-            .help("放大查看")
-            Text(model.channels.first(where: { $0.id == record.request.seriesID })?.name ?? "未保存的一次")
+            .help(L10n.tr("放大查看"))
+            Text(model.channels.first(where: { $0.id == record.request.seriesID })?.name ?? L10n.tr("未保存的一次"))
                 .font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.ink)
             Text(StudioViewModel.artworkTimeCaption(record.createdAt))
                 .font(.caption2)
@@ -1171,7 +1200,7 @@ struct StudioView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } label: {
-                    Text("最终 Prompt")
+                    Text(L10n.tr("最终 Prompt"))
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(MuseTheme.muted)
                 }
@@ -1179,13 +1208,13 @@ struct StudioView: View {
             FlowTags(tags: record.resolvedTags)
             if model.libraryShowsTrash {
                 HStack(spacing: 8) {
-                    Button("还原") { model.restoreFromTrash(record.id) }
+                    Button(L10n.tr("还原")) { model.restoreFromTrash(record.id) }
                         .buttonStyle(.bordered)
-                    Button("源文件") { model.revealArtworkInFinder(record.id, preferSource: true) }
+                    Button(L10n.tr("源文件")) { model.revealArtworkInFinder(record.id, preferSource: true) }
                         .buttonStyle(.plain)
                         .foregroundStyle(MuseTheme.ink)
                     Spacer(minLength: 0)
-                    Button("永久删除", role: .destructive) { model.purgeFromTrash(record.id) }
+                    Button(L10n.tr("永久删除"), role: .destructive) { model.purgeFromTrash(record.id) }
                         .buttonStyle(.plain)
                 }
                 .font(.caption.weight(.semibold))
@@ -1195,33 +1224,33 @@ struct StudioView: View {
                     Button {
                         model.applyArtwork(record.id)
                     } label: {
-                        Text("设为壁纸")
+                        Text(L10n.tr("设为壁纸"))
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.regular)
 
                     HStack(spacing: 10) {
-                        Button(record.isFavorite ? "已收藏" : "收藏") { model.toggleFavorite(record.id) }
+                        Button(record.isFavorite ? L10n.tr("已收藏") : L10n.tr("收藏")) { model.toggleFavorite(record.id) }
                             .buttonStyle(.plain)
                             .foregroundStyle(MuseTheme.ink)
-                        Button("再出") {
+                        Button(L10n.tr("再出")) {
                             model.useArtworkAsReference(record.id)
                             page = .create
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(MuseTheme.ink)
-                        Button("重打标签") { model.retagArtwork(record.id) }
+                        Button(L10n.tr("重打标签")) { model.retagArtwork(record.id) }
                             .buttonStyle(.plain)
                             .foregroundStyle(MuseTheme.amber)
                             .disabled(model.isRetagging)
                         Spacer(minLength: 0)
-                        Button("源文件") {
+                        Button(L10n.tr("源文件")) {
                             model.revealArtworkInFinder(record.id, preferSource: model.hasDistinctSourceImage(record))
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(MuseTheme.muted)
-                        Button("删除", role: .destructive) { model.deleteRecord(record.id) }
+                        Button(L10n.tr("删除"), role: .destructive) { model.deleteRecord(record.id) }
                             .buttonStyle(.plain)
                     }
                     .font(.caption.weight(.semibold))
@@ -1236,17 +1265,17 @@ struct StudioView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 HStack(alignment: .top) {
-                    pageHeader("自动换壁纸", subtitle: "从已有的图里轮流换桌面。多条同时开着时，第 1 优先先管重叠的屏。")
+                    pageHeader(L10n.tr("自动换壁纸"), subtitle: L10n.tr("从已有的图里轮流换桌面。多条同时开着时，第 1 优先先管重叠的屏。"))
                     Spacer()
                     Button {
                         playlistEditorTarget = .create
-                    } label: { Label("加一条换壁纸规则", systemImage: "plus") }.buttonStyle(.borderedProminent)
+                    } label: { Label(L10n.tr("加一条换壁纸规则"), systemImage: "plus") }.buttonStyle(.borderedProminent)
                 }
                 if model.playlists.isEmpty {
                     VStack(spacing: 13) {
                         Image(systemName: "play.square.stack").font(.system(size: 38, weight: .light)).foregroundStyle(MuseTheme.amber)
-                        Text("让桌面自己换图").font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-                        Text("选一个系列或一组筛选，打开开关后才会按间隔换桌面。")
+                        Text(L10n.tr("让桌面自己换图")).font(.title3.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+                        Text(L10n.tr("选一个系列或一组筛选，打开开关后才会按间隔换桌面。"))
                             .font(.callout).foregroundStyle(MuseTheme.muted)
                     }.frame(maxWidth: .infinity, minHeight: 340).musePanel(radius: 22)
                 } else {
@@ -1265,7 +1294,7 @@ struct StudioView: View {
                     .foregroundStyle(playlist.enabled ? MuseTheme.moss : MuseTheme.muted)
                 Text(playlist.name).font(.headline).foregroundStyle(MuseTheme.ink)
                 if playlist.isPreset {
-                    Text("预设")
+                    Text(L10n.tr("预设"))
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(MuseTheme.amber)
                         .padding(.horizontal, 7)
@@ -1273,33 +1302,39 @@ struct StudioView: View {
                         .background(Capsule().fill(MuseTheme.amber.opacity(0.14)))
                 }
                 Spacer()
-                Text(playlist.enabled ? "运行中" : "已暂停").font(.caption2).foregroundStyle(playlist.enabled ? MuseTheme.moss : MuseTheme.muted)
+                Text(playlist.enabled ? L10n.tr("运行中") : L10n.tr("已暂停")).font(.caption2).foregroundStyle(playlist.enabled ? MuseTheme.moss : MuseTheme.muted)
             }
             VStack(alignment: .leading, spacing: 5) {
                 Label(model.playlistSourceName(playlist), systemImage: playlist.source == .task ? "scope" : "sparkles.rectangle.stack")
-                Text("\(playlist.priorityCaption(among: model.playlists)) · \(model.playlistArtworkCount(playlist)) 张 · \(playlist.order.rawValue) · \(playlist.intervalCaption)")
+                Text(L10n.tr("\(playlist.priorityCaption(among: model.playlists)) · \(model.playlistArtworkCount(playlist)) 张 · \(playlist.order.rawValue.localized) · \(playlist.intervalCaption)"))
                 Text(playlist.ownershipCaption(among: model.playlists, displays: model.displayProfiles))
-                Text("氛围 · \(playlist.resolvedAtmosphere.rawValue)")
+                Text(L10n.tr("氛围 · \(playlist.resolvedAtmosphere.rawValue.localized)"))
             }.font(.caption).foregroundStyle(MuseTheme.muted)
-            Toggle(playlist.enabled ? "正在自动换" : "先别换", isOn: Binding(
+            Toggle(playlist.enabled ? L10n.tr("正在自动换") : L10n.tr("先别换"), isOn: Binding(
                 get: { playlist.enabled },
                 set: { model.setPlaylistEnabled(playlist.id, enabled: $0) }
             ))
             HStack {
-                Button("现在换一张") { model.playPlaylistNow(playlist.id, respectPriority: false) }
+                Button(L10n.tr("现在换一张")) { model.playPlaylistNow(playlist.id, respectPriority: false) }
                     .buttonStyle(.borderedProminent)
-                Button("提高优先") { model.movePlaylistPriority(playlist.id, higher: true) }
+                Button(L10n.tr("提高优先")) { model.movePlaylistPriority(playlist.id, higher: true) }
                     .disabled(!model.canRaisePlaylistPriority(playlist.id))
-                Button("降低优先") { model.movePlaylistPriority(playlist.id, higher: false) }
+                Button(L10n.tr("降低优先")) { model.movePlaylistPriority(playlist.id, higher: false) }
                     .disabled(!model.canLowerPlaylistPriority(playlist.id))
                 Spacer()
-                Button("编辑") { playlistEditorTarget = .edit(playlist) }
+                Button(L10n.tr("编辑")) { playlistEditorTarget = .edit(playlist) }
                 if playlist.isPreset {
-                    Button("暂停") {
-                        model.setPlaylistEnabled(playlist.id, enabled: false)
+                    if playlist.enabled {
+                        Button(L10n.tr("暂停")) {
+                            model.setPlaylistEnabled(playlist.id, enabled: false)
+                        }
+                        .help(L10n.tr("预设任务不能删除，只能暂停"))
+                    } else {
+                        Button(L10n.tr("启用")) {
+                            model.setPlaylistEnabled(playlist.id, enabled: true)
+                        }
+                        .help(L10n.tr("重新开始按这条规则换壁纸"))
                     }
-                    .disabled(!playlist.enabled)
-                    .help("预设任务不能删除，只能暂停")
                 } else {
                     Button(role: .destructive) { model.deletePlaylist(playlist.id) } label: { Image(systemName: "trash") }
                 }
@@ -1312,14 +1347,15 @@ struct StudioView: View {
     private var settingsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                pageHeader("设置", subtitle: "先连上图片模型就能出图。桌面装饰可按需再开。")
-                MuseSettingsDisclosure(title: "文生图 API", isExpanded: $imageAPIExpanded) {
+                pageHeader(L10n.tr("设置"), subtitle: L10n.tr("先连上图片模型就能出图。桌面装饰可按需再开。"))
+                languageSettingsCard
+                MuseSettingsDisclosure(title: L10n.tr("文生图 API"), isExpanded: $imageAPIExpanded) {
                     imageModelSettings
                 }
-                MuseSettingsDisclosure(title: "Agent 与大模型 API", isExpanded: $agentAPIExpanded) {
+                MuseSettingsDisclosure(title: L10n.tr("Agent 与大模型 API"), isExpanded: $agentAPIExpanded) {
                     promptAgentSettings
                 }
-                MuseSettingsDisclosure(title: "桌面装饰（时钟 / 天气 / 氛围）", isExpanded: $desktopChromeExpanded) {
+                MuseSettingsDisclosure(title: L10n.tr("桌面装饰（时钟 / 天气 / 氛围）"), isExpanded: $desktopChromeExpanded) {
                     wallpaperTransitionCard
                 }
                 launchAtLoginCard
@@ -1328,81 +1364,102 @@ struct StudioView: View {
         }
     }
 
+    private var languageSettingsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(L10n.tr("界面语言"), systemImage: "globe")
+                .font(.headline).foregroundStyle(MuseTheme.ink)
+            Picker("Language / 语言", selection: $language.selection) {
+                ForEach(AppLanguage.allCases) { option in
+                    Text(option.nativeName).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .frame(maxWidth: 420, alignment: .leading)
+            .accessibilityIdentifier("interface-language-picker")
+            Text(L10n.tr("切换后立即生效。提示词、系列名称和作品内容保留原文。"))
+                .font(.caption).foregroundStyle(MuseTheme.muted)
+        }
+        .padding(18)
+        .musePanel(radius: 17, strong: true)
+    }
+
     private var wallpaperTransitionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("换图仍是一次落定。氛围含缓动与鼠标视差；时钟与天气合在同一块面板。若图标或右键异常，先关掉氛围。")
+            Text(L10n.tr("换图仍是一次落定。氛围连续缓动，换图不打断；时钟与天气合在同一块面板。若图标或右键异常，先关掉氛围。"))
                 .font(.caption).foregroundStyle(MuseTheme.muted)
 
             Toggle(
-                "壁纸氛围动效（含鼠标反馈）",
+                L10n.tr("壁纸氛围动效（含鼠标反馈）"),
                 isOn: Binding(
                     get: { model.settings.livingWallpaperEnabled ?? true },
                     set: {
                         model.settings.livingWallpaperEnabled = $0
                         model.saveSettings()
+                        model.refreshLivingAtmosphere()
                     }
                 )
             )
             if model.settings.livingWallpaperEnabled ?? true {
-                Picker("默认风格", selection: Binding(
+                Picker(L10n.tr("默认风格"), selection: Binding(
                     get: { model.settings.livingWallpaperStyle ?? .kenBurns },
                     set: {
                         model.settings.livingWallpaperStyle = $0
                         model.saveSettings()
+                        model.refreshLivingAtmosphere()
                     }
                 )) {
-                    ForEach(LivingWallpaperStyle.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(LivingWallpaperStyle.allCases) { Text($0.rawValue.localized).tag($0) }
                 }
                 .pickerStyle(.menu)
             }
 
             Divider().opacity(0.35)
             Toggle(
-                "桌面时钟",
+                L10n.tr("桌面时钟"),
                 isOn: Binding(
                     get: { model.settings.desktopClockEnabled ?? true },
                     set: { model.setDesktopClockEnabled($0) }
                 )
             )
             if model.settings.desktopClockEnabled ?? true {
-                Picker("表盘", selection: Binding(
+                Picker(L10n.tr("表盘"), selection: Binding(
                     get: { model.settings.desktopClockFace ?? .desktop },
                     set: { model.setDesktopClockFace($0) }
                 )) {
-                    ForEach(DesktopClockFace.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(DesktopClockFace.allCases) { Text($0.rawValue.localized).tag($0) }
                 }
                 .pickerStyle(.menu)
             }
 
             Toggle(
-                "在时钟下方显示天气温度",
+                L10n.tr("在时钟下方显示天气温度"),
                 isOn: Binding(
                     get: { model.settings.desktopWeatherEnabled ?? true },
                     set: { model.setDesktopWeatherEnabled($0) }
                 )
             )
             if model.settings.desktopWeatherEnabled ?? true {
-                Picker("温度单位", selection: Binding(
+                Picker(L10n.tr("温度单位"), selection: Binding(
                     get: { model.settings.desktopWeatherUnit ?? .celsius },
                     set: { model.setDesktopWeatherUnit($0) }
                 )) {
-                    ForEach(WeatherTemperatureUnit.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(WeatherTemperatureUnit.allCases) { Text($0.rawValue.localized).tag($0) }
                 }
                 .pickerStyle(.menu)
                 TextField(
-                    "天气城市（可选，如杭州）",
+                    L10n.tr("天气城市（可选，如杭州）"),
                     text: Binding(
                         get: { model.settings.desktopWeatherCity ?? "" },
                         set: { model.setDesktopWeatherCity($0) }
                     )
                 )
-                Text("自动定位顺序：系统定位 → 国内 IP 城市 → 上次正确位置。机房出口 IP 容易偏城，不准时在上面填「杭州」。")
+                Text(L10n.tr("自动定位顺序：系统定位 → 国内 IP 城市 → 上次正确位置。机房出口 IP 容易偏城，不准时在上面填「杭州」。"))
                     .font(.caption).foregroundStyle(MuseTheme.muted)
             }
 
             Divider().opacity(0.35)
             Toggle(
-                "桌面角落快捷键",
+                L10n.tr("桌面角落快捷键"),
                 isOn: Binding(
                     get: { model.settings.desktopControlsEnabled ?? true },
                     set: {
@@ -1411,7 +1468,7 @@ struct StudioView: View {
                     }
                 )
             )
-            Text("右下角：喜欢、删除（进回收箱并换下一张）、下一张。菜单栏也可操作。")
+            Text(L10n.tr("右下角：喜欢、删除（进回收箱并换下一张）、下一张。菜单栏也可操作。"))
                 .font(.caption).foregroundStyle(MuseTheme.muted)
         }
         .padding(.top, 6)
@@ -1419,22 +1476,22 @@ struct StudioView: View {
 
     private var launchAtLoginCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("开机启动").font(.headline).foregroundStyle(MuseTheme.ink)
+            Text(L10n.tr("开机启动")).font(.headline).foregroundStyle(MuseTheme.ink)
             Toggle(
-                "登录 Mac 时自动打开 Musepaper",
+                L10n.tr("登录 Mac 时自动打开 Musepaper"),
                 isOn: Binding(
                     get: { model.launchAtLoginEnabled },
                     set: { model.setLaunchAtLogin($0) }
                 )
             )
-            Text("方便自动换壁纸、桌面时钟和角落快捷键在后台继续工作。建议把 App 装在「应用程序」里再打开此开关。")
+            Text(L10n.tr("方便自动换壁纸、桌面时钟和角落快捷键在后台继续工作。建议把 App 装在「应用程序」里再打开此开关。"))
                 .font(.caption).foregroundStyle(MuseTheme.muted)
             if model.launchAtLoginNeedsApproval {
                 HStack(spacing: 10) {
-                    Text("等待系统批准登录项。")
+                    Text(L10n.tr("等待系统批准登录项。"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(MuseTheme.amber)
-                    Button("打开登录项设置") { LoginLaunchService.openLoginItemsSettings() }
+                    Button(L10n.tr("打开登录项设置")) { LoginLaunchService.openLoginItemsSettings() }
                         .buttonStyle(.bordered)
                 }
             }
@@ -1445,34 +1502,34 @@ struct StudioView: View {
 
     private var imageModelSettings: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Picker("当前连接", selection: Binding(get: { model.activeModelConfigurationID ?? UUID() }, set: { model.selectModelConfiguration($0) })) {
+            Picker(L10n.tr("当前连接"), selection: Binding(get: { model.activeModelConfigurationID ?? UUID() }, set: { model.selectModelConfiguration($0) })) {
                 ForEach(model.modelConfigurations) { Text($0.name).tag($0.id) }
             }
             if let current = model.activeModelConfiguration {
                 let config = Binding<ModelConfiguration>(get: { model.activeModelConfiguration ?? current }, set: { model.updateActiveModelConfiguration($0) })
-                Picker("服务类型", selection: config.provider) { ForEach(ProviderKind.allCases) { Text($0.rawValue).tag($0) } }
+                Picker(L10n.tr("服务类型"), selection: config.provider) { ForEach(ProviderKind.allCases) { Text($0.rawValue.localized).tag($0) } }
                 if config.wrappedValue.provider != .demo {
-                    TextField("连接名称", text: config.name)
+                    TextField(L10n.tr("连接名称"), text: config.name)
                     TextField("Base URL", text: config.baseURL)
-                    TextField("图片模型（文生图名，不要填 Hy3）", text: config.model)
-                    Text("换电脑只拷 app，AK 不会跟着走。保存并测试会真出一张图；成功会写「连接成功」。AntChat/Qwen 请用 1664×928 或 2048×1152，1536×1024 拉到 Retina 大屏会明显发糊。「质量」仅官方 OpenAI 生效。")
+                    TextField(L10n.tr("图片模型（文生图名，不要填 Hy3）"), text: config.model)
+                    Text(L10n.tr("换电脑只拷 app，AK 不会跟着走。保存并测试会真出一张图；成功会写「连接成功」。AntChat/Qwen 请用 1664×928 或 2048×1152，1536×1024 拉到 Retina 大屏会明显发糊。「质量」仅官方 OpenAI 生效。"))
                         .font(.caption2)
                         .foregroundStyle(MuseTheme.muted)
-                    SecureField(model.apiKeyConfigured ? "AK 已保存；留空不修改" : "API Key / AK", text: $model.apiKeyDraft)
-                    Text("尺寸、质量在生图页调整。AntChat/Qwen 建议 2048×1152；「质量」仅官方 OpenAI 生效。")
+                    SecureField(model.apiKeyConfigured ? L10n.tr("AK 已保存；留空不修改") : "API Key / AK", text: $model.apiKeyDraft)
+                    Text(L10n.tr("尺寸、质量在生图页调整。AntChat/Qwen 建议 2048×1152；「质量」仅官方 OpenAI 生效。"))
                         .font(.caption2)
                         .foregroundStyle(MuseTheme.muted)
                 }
                 HStack {
-                    Button("新增连接") { model.addModelConfiguration() }
+                    Button(L10n.tr("新增连接")) { model.addModelConfiguration() }
                     Spacer()
-                    Button("保存") { model.saveModelConfiguration() }
-                    Button(model.isTestingConnection ? "测试中…" : "保存并测试") { model.saveAndTestModelConnection() }.buttonStyle(.borderedProminent).disabled(model.isTestingConnection)
+                    Button(L10n.tr("保存")) { model.saveModelConfiguration() }
+                    Button(model.isTestingConnection ? L10n.tr("测试中…") : L10n.tr("保存并测试")) { model.saveAndTestModelConnection() }.buttonStyle(.borderedProminent).disabled(model.isTestingConnection)
                 }
                 if let notice = model.connectionNotice {
                     Text(notice)
-                        .font(.caption.weight(notice.hasPrefix("连接成功") ? .semibold : .regular))
-                        .foregroundStyle(notice.hasPrefix("连接成功") ? MuseTheme.moss : MuseTheme.muted)
+                        .font(.caption.weight(notice.hasPrefix(L10n.tr("连接成功")) ? .semibold : .regular))
+                        .foregroundStyle(notice.hasPrefix(L10n.tr("连接成功")) ? MuseTheme.moss : MuseTheme.muted)
                 }
             }
         }.padding(.top, 14)
@@ -1480,11 +1537,11 @@ struct StudioView: View {
 
     private var promptAgentSettings: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("一个厂商连接 = Base URL + AK；模型名写成列表。Agent 选用时按「厂商:模型」选择或随机。")
+            Text(L10n.tr("一个厂商连接 = Base URL + AK；模型名写成列表。Agent 选用时按「厂商:模型」选择或随机。"))
                 .font(.caption).foregroundStyle(MuseTheme.muted)
 
-            Text("厂商连接").font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-            Picker("当前厂商", selection: Binding(
+            Text(L10n.tr("厂商连接")).font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+            Picker(L10n.tr("当前厂商"), selection: Binding(
                 get: {
                     model.activePromptModelConfiguration?.id
                         ?? model.promptModelConfigurations.first?.id
@@ -1501,15 +1558,15 @@ struct StudioView: View {
                     get: { model.activePromptModelConfiguration ?? current },
                     set: { model.updateActivePromptModelConfiguration($0) }
                 )
-                TextField("厂商名称", text: config.name)
+                TextField(L10n.tr("厂商名称"), text: config.name)
                 TextField("Base URL", text: config.baseURL)
-                Picker("接口格式", selection: config.apiFormat) {
-                    ForEach(PromptAPIFormat.allCases) { Text($0.rawValue).tag($0) }
+                Picker(L10n.tr("接口格式"), selection: config.apiFormat) {
+                    ForEach(PromptAPIFormat.allCases) { Text($0.rawValue.localized).tag($0) }
                 }
-                SecureField(model.activePromptAPIKeyConfigured ? "AK 已保存；留空不修改" : "API Key / AK", text: $model.promptAPIKeyDraft)
+                SecureField(model.activePromptAPIKeyConfigured ? L10n.tr("AK 已保存；留空不修改") : "API Key / AK", text: $model.promptAPIKeyDraft)
 
-                Text("模型列表").font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.muted)
-                Text("一行一个模型名，共用上面这把 AK。")
+                Text(L10n.tr("模型列表")).font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.muted)
+                Text(L10n.tr("一行一个模型名，共用上面这把 AK。"))
                     .font(.caption2)
                     .foregroundStyle(MuseTheme.muted)
                 TextEditor(text: $model.promptModelsTextDraft)
@@ -1521,13 +1578,13 @@ struct StudioView: View {
                     .onAppear { model.syncPromptModelsTextDraft() }
 
                 HStack {
-                    Button("新增厂商") { model.addPromptModelConfiguration() }
-                    Button("删除厂商", role: .destructive) { model.deleteActivePromptModelConfiguration() }
+                    Button(L10n.tr("新增厂商")) { model.addPromptModelConfiguration() }
+                    Button(L10n.tr("删除厂商"), role: .destructive) { model.deleteActivePromptModelConfiguration() }
                         .disabled(model.promptModelConfigurations.count <= 1)
                     Spacer()
-                    Button("复用图片模型 AK") { model.reuseImageAPIKeyForPromptModel() }.disabled(!model.apiKeyConfigured)
-                    Button("保存") { model.savePromptModelConfiguration() }
-                    Button(model.isTestingPromptModel ? "测试中…" : "保存并测试") { model.saveAndTestPromptModel() }
+                    Button(L10n.tr("复用图片模型 AK")) { model.reuseImageAPIKeyForPromptModel() }.disabled(!model.apiKeyConfigured)
+                    Button(L10n.tr("保存")) { model.savePromptModelConfiguration() }
+                    Button(model.isTestingPromptModel ? L10n.tr("测试中…") : L10n.tr("保存并测试")) { model.saveAndTestPromptModel() }
                         .buttonStyle(.borderedProminent)
                         .disabled(model.isTestingPromptModel)
                 }
@@ -1535,20 +1592,20 @@ struct StudioView: View {
 
             Divider().overlay(Color.white.opacity(0.08))
 
-            Text("Agent 选用").font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
-            Text("当前：\(model.promptAgentRouting.enabled ? "已启用" : "未启用") · \(model.promptAgentRouting.mode.rawValue)")
+            Text(L10n.tr("Agent 选用")).font(.subheadline.weight(.semibold)).foregroundStyle(MuseTheme.ink)
+            Text(L10n.tr("当前：\(model.promptAgentRouting.enabled ? L10n.tr("已启用") : L10n.tr("未启用")) · \(model.promptAgentRouting.mode.rawValue.localized)"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(model.promptAgentRouting.enabled ? MuseTheme.moss : MuseTheme.muted)
-            Picker("选用方式", selection: Binding(
+            Picker(L10n.tr("选用方式"), selection: Binding(
                 get: { model.promptAgentRouting.mode },
                 set: { model.setPromptAgentMode($0) }
             )) {
-                ForEach(PromptAgentModelMode.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(PromptAgentModelMode.allCases) { Text($0.rawValue.localized).tag($0) }
             }
             .pickerStyle(.segmented)
 
             if model.promptAgentRouting.mode == .fixed {
-                Picker("固定使用", selection: Binding(
+                Picker(L10n.tr("固定使用"), selection: Binding(
                     get: { model.promptAgentRouting.activeRef?.id ?? "" },
                     set: { id in
                         if let option = model.promptAgentSelectionOptions.first(where: { $0.ref.id == id }) {
@@ -1561,7 +1618,7 @@ struct StudioView: View {
                     }
                 }
             } else {
-                Text("勾选参与随机的「厂商:模型」；每次 Agent 调用抽一个。")
+                Text(L10n.tr("勾选参与随机的「厂商:模型」；每次 Agent 调用抽一个。"))
                     .font(.caption2)
                     .foregroundStyle(MuseTheme.muted)
                 ForEach(model.promptAgentSelectionOptions, id: \.ref.id) { option in
@@ -1583,14 +1640,21 @@ struct StudioView: View {
 
     private var versionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("关于 Musepaper").font(.headline).foregroundStyle(MuseTheme.ink)
+            HStack {
+                Text(L10n.tr("关于 Musepaper")).font(.headline).foregroundStyle(MuseTheme.ink)
+                Spacer()
+                Button(L10n.tr("关于 SofunAI")) {
+                    NotificationCenter.default.post(name: .musepaperOpenAbout, object: nil)
+                }
+                .buttonStyle(.bordered)
+            }
             SofunAIPublisherView()
                 .foregroundStyle(MuseTheme.ink)
-            Link("GitHub 开源主页", destination: AppIdentity.repositoryURL)
+            Link(L10n.tr("GitHub 开源主页"), destination: AppIdentity.repositoryURL)
                 .font(.caption)
                 .foregroundStyle(MuseTheme.amber)
             Divider().overlay(MuseTheme.border)
-            Text("当前版本").font(.headline).foregroundStyle(MuseTheme.ink)
+            Text(L10n.tr("当前版本")).font(.headline).foregroundStyle(MuseTheme.ink)
             Text(AppVersion.display)
                 .font(.system(size: 22, weight: .medium, design: .monospaced))
                 .foregroundStyle(MuseTheme.amber)
@@ -1600,22 +1664,22 @@ struct StudioView: View {
                     .foregroundStyle(MuseTheme.muted)
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(latest.highlights, id: \.self) { line in
-                        Text("· \(line)")
+                        Text("· \(line.localized)")
                             .font(.caption)
                             .foregroundStyle(MuseTheme.muted)
                     }
                 }
             }
             HStack(spacing: 10) {
-                Button(model.isCheckingUpdate ? "检查中…" : "检查更新") {
+                Button(model.isCheckingUpdate ? L10n.tr("检查中…") : L10n.tr("检查更新")) {
                     model.checkForUpdate(manual: true)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.isCheckingUpdate)
                 if model.updateCheckResult?.status == .updateAvailable {
-                    Button("下载更新") { model.openUpdateDownload() }
+                    Button(L10n.tr("下载更新")) { model.openUpdateDownload() }
                         .buttonStyle(.bordered)
-                    Button("打开下载页") { model.openUpdateDownload() }
+                    Button(L10n.tr("打开下载页")) { model.openUpdateDownload() }
                         .buttonStyle(.plain)
                 }
             }
@@ -1624,7 +1688,7 @@ struct StudioView: View {
                     .font(.caption.weight(update.status == .updateAvailable ? .semibold : .regular))
                     .foregroundStyle(update.status == .updateAvailable ? MuseTheme.amber : MuseTheme.muted)
             }
-            Text("启动后会自动检查 OSS 上的最新版；有新版时顶栏与菜单栏会提示。安装请用 DMG 里的「安装并打开」。")
+            Text(L10n.tr("启动后会自动检查 OSS 上的最新版；有新版时顶栏与菜单栏会提示。安装请用 DMG 里的「安装并打开」。"))
                 .font(.caption2)
                 .foregroundStyle(MuseTheme.muted)
         }
@@ -1648,6 +1712,7 @@ private extension View {
 
 /// Full-row expandable settings block — label text is as clickable as the chevron.
 private struct MuseSettingsDisclosure<Content: View>: View {
+    @Environment(\.locale) private var interfaceLocale
     let title: String
     @Binding var isExpanded: Bool
     @ViewBuilder var content: () -> Content
@@ -1673,7 +1738,7 @@ private struct MuseSettingsDisclosure<Content: View>: View {
                 .frame(maxWidth: .infinity, minHeight: MuseHit.tab, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .help(isExpanded ? "收起" : "展开")
+            .help(isExpanded ? L10n.tr("收起") : L10n.tr("展开"))
 
             if isExpanded {
                 content()
@@ -1687,6 +1752,7 @@ private struct MuseSettingsDisclosure<Content: View>: View {
 }
 
 private struct MoodEditor: View {
+    @Environment(\.locale) private var interfaceLocale
     @Environment(\.dismiss) private var dismiss
     private let id: UUID
     private let existing: InspirationChannel?
@@ -1730,47 +1796,47 @@ private struct MoodEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("改这个系列").font(.system(size: 28, weight: .medium, design: .serif))
-                Text("改感觉或打开自动出图。自动出图只往图库加图，不会换桌面。")
+                Text(L10n.tr("改这个系列")).font(.system(size: 28, weight: .medium, design: .serif))
+                Text(L10n.tr("改感觉或打开自动出图。自动出图只往图库加图，不会换桌面。"))
                     .font(.callout).foregroundStyle(.secondary)
             }
 
             TextEditor(text: $idea).font(.system(size: 18, design: .serif)).frame(height: 92).padding(10).musePanel(radius: 13)
-                .overlay(alignment: .topLeading) { if idea.isEmpty { Text("例如：潮湿、安静、有巨大空间感的未来上海").foregroundStyle(.secondary).padding(17).allowsHitTesting(false) } }
+                .overlay(alignment: .topLeading) { if idea.isEmpty { Text(L10n.tr("例如：潮湿、安静、有巨大空间感的未来上海")).foregroundStyle(.secondary).padding(17).allowsHitTesting(false) } }
 
             VStack(alignment: .leading, spacing: 12) {
-                Toggle("自动出图（只进图库，不换桌面）", isOn: $scheduleEnabled)
+                Toggle(L10n.tr("自动出图（只进图库，不换桌面）"), isOn: $scheduleEnabled)
                 if scheduleEnabled {
                     IntervalControl(
                         seconds: scheduleIntervalSeconds,
-                        nextCaption: "下次 \(ScheduleService.nextFireCaption(intervalSeconds: scheduleIntervalSeconds, lastProducedAt: existing?.lastProducedAt))",
+                        nextCaption: L10n.tr("下次 \(ScheduleService.nextFireCaption(intervalSeconds: scheduleIntervalSeconds, lastProducedAt: existing?.lastProducedAt))"),
                         onChange: { scheduleIntervalSeconds = $0 }
                     )
-                    CountControl(value: scheduledCandidateCount, caption: "每次 \(scheduledCandidateCount) 张") {
+                    CountControl(value: scheduledCandidateCount, caption: L10n.tr("每次 \(scheduledCandidateCount) 张")) {
                         scheduledCandidateCount = $0
                     }
                 }
             }.padding(15).musePanel(radius: 14)
 
-            DisclosureGroup("高级设置", isExpanded: $showAdvanced) {
+            DisclosureGroup(L10n.tr("高级设置"), isExpanded: $showAdvanced) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Button { expand() } label: { Label(isExpanding ? "正在整理…" : "让 AI 拆开保持项和变化项", systemImage: "sparkles") }
+                    Button { expand() } label: { Label(isExpanding ? L10n.tr("正在整理…") : L10n.tr("让 AI 拆开保持项和变化项"), systemImage: "sparkles") }
                         .disabled(!canUseAI || idea.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isExpanding)
                     if let error { Text(error).font(.caption).foregroundStyle(.orange) }
-                    Picker("探索方式", selection: $promptStrategy) {
-                        ForEach(PromptStrategy.allCases) { Text($0.rawValue).tag($0) }
+                    Picker(L10n.tr("探索方式"), selection: $promptStrategy) {
+                        ForEach(PromptStrategy.allCases) { Text($0.rawValue.localized).tag($0) }
                     }
-                    TextField("名称", text: $name); TextField("整体气质", text: $essence)
-                    TextField("必须保持的视觉内核", text: $coreKeywords); TextField("允许变化的维度", text: $variationAxes)
-                    TextField("色板", text: $palette); TextField("禁止元素", text: $exclusions)
+                    TextField(L10n.tr("名称"), text: $name); TextField(L10n.tr("整体气质"), text: $essence)
+                    TextField(L10n.tr("必须保持的视觉内核"), text: $coreKeywords); TextField(L10n.tr("允许变化的维度"), text: $variationAxes)
+                    TextField(L10n.tr("色板"), text: $palette); TextField(L10n.tr("禁止元素"), text: $exclusions)
                 }.padding(.top, 10)
             }
             Spacer()
             HStack {
-                Button("取消") { dismiss() }
+                Button(L10n.tr("取消")) { dismiss() }
                 Spacer()
-                Button("只保存") { commit(generateNow: false) }.disabled(!canSave)
-                Button("保存并生成") { commit(generateNow: true) }
+                Button(L10n.tr("只保存")) { commit(generateNow: false) }.disabled(!canSave)
+                Button(L10n.tr("保存并生成")) { commit(generateNow: true) }
                     .buttonStyle(.borderedProminent).disabled(!canSave)
             }
         }.padding(26).frame(width: 520, height: 460)
@@ -1778,9 +1844,9 @@ private struct MoodEditor: View {
 
     private var promptStrategyDescription: String {
         switch promptStrategy {
-        case .explore: "围绕主题内核主动寻找新的场景、天气、时段和镜头表达。"
-        case .enhance: "忠实保留你写的 Prompt，只补足构图、光线、材质与壁纸约束。"
-        case .hybrid: "既保持主题身份，也允许 Agent 在变化轴内探索新的表现。"
+        case .explore: L10n.tr("围绕主题内核主动寻找新的场景、天气、时段和镜头表达。")
+        case .enhance: L10n.tr("忠实保留你写的 Prompt，只补足构图、光线、材质与壁纸约束。")
+        case .hybrid: L10n.tr("既保持主题身份，也允许 Agent 在变化轴内探索新的表现。")
         }
     }
 
@@ -1823,6 +1889,7 @@ private struct MoodEditor: View {
 }
 
 private struct ScheduleEditorSheet: View {
+    @Environment(\.locale) private var interfaceLocale
     let channelID: UUID?
     @ObservedObject var model: StudioViewModel
     var onDone: () -> Void
@@ -1836,20 +1903,20 @@ private struct ScheduleEditorSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("自动出图").font(.title2.weight(.semibold))
-                    Text(live?.name ?? "未选择任务")
+                    Text(L10n.tr("自动出图")).font(.title2.weight(.semibold))
+                    Text(live?.name ?? L10n.tr("未选择任务"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 Spacer()
-                Button("完成") { onDone() }
+                Button(L10n.tr("完成")) { onDone() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
             }
 
             if let live {
-                Toggle("打开自动出图", isOn: Binding(
+                Toggle(L10n.tr("打开自动出图"), isOn: Binding(
                     get: { live.resolvedScheduleEnabled },
                     set: { model.setTaskSchedule(live.id, enabled: $0) }
                 ))
@@ -1862,7 +1929,7 @@ private struct ScheduleEditorSheet: View {
                         onChange: { model.setTaskSchedule(live.id, intervalSeconds: $0) }
                     )
                     HStack(spacing: 8) {
-                        Text("每次")
+                        Text(L10n.tr("每次"))
                             .font(.callout.weight(.semibold))
                             .foregroundStyle(MuseTheme.ink)
                         CompactCountField(
@@ -1870,16 +1937,16 @@ private struct ScheduleEditorSheet: View {
                             onChange: { model.setTaskSchedule(live.id, count: $0) }
                         )
                     }
-                    Text("只写入作品集，不会自动换桌面。Musepaper 需要保持打开。")
+                    Text(L10n.tr("只写入作品集，不会自动换桌面。Musepaper 需要保持打开。"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("打开后按间隔自动出图，结果进作品集。")
+                    Text(L10n.tr("打开后按间隔自动出图，结果进作品集。"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Text("任务已不存在。")
+                Text(L10n.tr("任务已不存在。"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -1892,15 +1959,16 @@ private struct ScheduleEditorSheet: View {
 }
 
 private struct ReferencePicker: View {
+    @Environment(\.locale) private var interfaceLocale
     @ObservedObject var model: StudioViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("选一张参考图").font(.headline)
-            Text("点哪张，下一组就按哪张的感觉出。")
+            Text(L10n.tr("选一张参考图")).font(.headline)
+            Text(L10n.tr("点哪张，下一组就按哪张的感觉出。"))
                 .font(.caption).foregroundStyle(.secondary)
             if model.referencePickerArtworks.isEmpty {
-                Text("还没有图。先出一组，或从电脑选一张。")
+                Text(L10n.tr("还没有图。先出一组，或从电脑选一张。"))
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 ScrollView {
@@ -1930,9 +1998,9 @@ private struct ReferencePicker: View {
                 .frame(maxHeight: 220)
             }
             HStack {
-                Button("从电脑选图") { model.chooseReferenceFiles() }
+                Button(L10n.tr("从电脑选图")) { model.chooseReferenceFiles() }
                 Spacer()
-                Button("关掉参考图") { model.setUseReferenceImages(false) }
+                Button(L10n.tr("关掉参考图")) { model.setUseReferenceImages(false) }
             }
         }
         .padding(18)
@@ -1941,6 +2009,7 @@ private struct ReferencePicker: View {
 }
 
 struct FlowTags: View {
+    @Environment(\.locale) private var interfaceLocale
     let tags: [String]
     var body: some View {
         LazyVGrid(
@@ -1969,6 +2038,7 @@ struct FlowTags: View {
 }
 
 private struct CollectionEditor: View {
+    @Environment(\.locale) private var interfaceLocale
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var taskIDs: Set<UUID> = []
@@ -1992,16 +2062,16 @@ private struct CollectionEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("做一组筛选").font(.system(size: 24, weight: .medium, design: .serif))
-                Text("保存筛选规则，不复制图片。新作品符合条件会自动进来。")
+                Text(L10n.tr("做一组筛选")).font(.system(size: 24, weight: .medium, design: .serif))
+                Text(L10n.tr("保存筛选规则，不复制图片。新作品符合条件会自动进来。"))
                     .font(.caption).foregroundStyle(.secondary)
             }
-            TextField("名称，例如：安静的蓝色夜景", text: $name)
+            TextField(L10n.tr("名称，例如：安静的蓝色夜景"), text: $name)
                 .textFieldStyle(.roundedBorder)
 
             if !tasks.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("来源任务").font(.caption.weight(.bold)).foregroundStyle(MuseTheme.muted)
+                    Text(L10n.tr("来源任务")).font(.caption.weight(.bold)).foregroundStyle(MuseTheme.muted)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
                             ForEach(tasks) { task in
@@ -2024,11 +2094,11 @@ private struct CollectionEditor: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("标签").font(.caption.weight(.bold)).foregroundStyle(MuseTheme.muted)
+                    Text(L10n.tr("标签")).font(.caption.weight(.bold)).foregroundStyle(MuseTheme.muted)
                     Spacer()
-                    Picker("模式", selection: $pickingExclude) {
-                        Text("要包含").tag(false)
-                        Text("要排除").tag(true)
+                    Picker(L10n.tr("模式"), selection: $pickingExclude) {
+                        Text(L10n.tr("要包含")).tag(false)
+                        Text(L10n.tr("要排除")).tag(true)
                     }
                     .pickerStyle(.segmented)
                     .frame(width: 180)
@@ -2053,12 +2123,12 @@ private struct CollectionEditor: View {
                         }
                     }
                 }
-                TextField("搜索标签", text: $tagQuery)
+                TextField(L10n.tr("搜索标签"), text: $tagQuery)
                     .textFieldStyle(.roundedBorder)
                 if availableTags.isEmpty {
-                    Text("还没有 AI 标签，先出几张图。").font(.caption).foregroundStyle(.secondary)
+                    Text(L10n.tr("还没有 AI 标签，先出几张图。")).font(.caption).foregroundStyle(.secondary)
                 } else if filteredTags.isEmpty {
-                    Text("没有匹配的标签").font(.caption).foregroundStyle(.secondary)
+                    Text(L10n.tr("没有匹配的标签")).font(.caption).foregroundStyle(.secondary)
                 } else {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 6)], spacing: 6) {
@@ -2069,11 +2139,11 @@ private struct CollectionEditor: View {
                     }
                     .frame(maxHeight: 220)
                     if availableTags.count > filteredTags.count, tagQuery.isEmpty {
-                        Text("只显示常用 \(filteredTags.count) 个，搜索可找其余标签。")
+                        Text(L10n.tr("只显示常用 \(filteredTags.count) 个，搜索可找其余标签。"))
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                 }
-                Toggle("只包含收藏", isOn: $favoritesOnly)
+                Toggle(L10n.tr("只包含收藏"), isOn: $favoritesOnly)
                     .font(.caption)
             }
             .padding(12)
@@ -2081,9 +2151,9 @@ private struct CollectionEditor: View {
 
             Spacer(minLength: 0)
             HStack {
-                Button("取消") { dismiss() }
+                Button(L10n.tr("取消")) { dismiss() }
                 Spacer()
-                Button("创建作品集") {
+                Button(L10n.tr("创建作品集")) {
                     onSave(SmartCollection(
                         name: name, taskIDs: Array(taskIDs),
                         includeTags: Array(tags), excludeTags: Array(excludedTags),
@@ -2150,6 +2220,7 @@ private enum PlaylistEditorTarget: Identifiable {
 }
 
 private struct PlaylistEditor: View {
+    @Environment(\.locale) private var interfaceLocale
     @Environment(\.dismiss) private var dismiss
     private let id: UUID
     private let isEditing: Bool
@@ -2165,6 +2236,8 @@ private struct PlaylistEditor: View {
     private let lastArtworkID: UUID?
     private let lastArtworkIDsByDisplay: [String: UUID]?
     private let existingPriority: Int?
+    private let shuffleQueueIDs: [UUID]?
+    private let shufflePoolIDs: [UUID]?
     let tasks: [InspirationChannel]
     let collections: [SmartCollection]
     let displays: [DisplayProfile]
@@ -2191,6 +2264,8 @@ private struct PlaylistEditor: View {
         _selectedDisplayIDs = State(initialValue: Set(targets))
         lastArtworkID = existing?.lastArtworkID
         lastArtworkIDsByDisplay = existing?.lastArtworkIDsByDisplay
+        shuffleQueueIDs = existing?.shuffleQueueIDs
+        shufflePoolIDs = existing?.shufflePoolIDs
         self.tasks = tasks
         self.collections = collections
         self.displays = displays
@@ -2200,9 +2275,9 @@ private struct PlaylistEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(isEditing ? "编辑换壁纸" : "自动换壁纸")
+                Text(isEditing ? L10n.tr("编辑换壁纸") : L10n.tr("自动换壁纸"))
                     .font(.system(size: 27, weight: .medium, design: .serif))
-                Text("从已经有的图里轮流换桌面，不会去出新图。多条同时开着时，优先高的先管重叠的屏。")
+                Text(L10n.tr("从已经有的图里轮流换桌面，不会去出新图。多条同时开着时，优先高的先管重叠的屏。"))
                     .font(.callout).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 26)
@@ -2211,32 +2286,32 @@ private struct PlaylistEditor: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    TextField("给这条规则起个名", text: $name)
+                    TextField(L10n.tr("给这条规则起个名"), text: $name)
                     VStack(alignment: .leading, spacing: 12) {
-                        Picker("用哪些图", selection: $source) {
+                        Picker(L10n.tr("用哪些图"), selection: $source) {
                             ForEach(PlaylistSource.allCases) { source in
-                                Text(source == .all ? "全部图" : source == .task ? "某个系列" : "一组筛选").tag(source)
+                                Text(source == .all ? L10n.tr("全部图") : source == .task ? L10n.tr("某个系列") : L10n.tr("一组筛选")).tag(source)
                             }
                         }.pickerStyle(.segmented)
                         if source == .task {
-                            Picker("哪个系列", selection: optionalSourceBinding(defaultID: tasks.first?.id)) {
+                            Picker(L10n.tr("哪个系列"), selection: optionalSourceBinding(defaultID: tasks.first?.id)) {
                                 ForEach(tasks) { Text($0.name).tag(Optional($0.id)) }
                             }
                         } else if source == .collection {
-                            Picker("哪组筛选", selection: optionalSourceBinding(defaultID: collections.first?.id)) {
+                            Picker(L10n.tr("哪组筛选"), selection: optionalSourceBinding(defaultID: collections.first?.id)) {
                                 ForEach(collections) { Text($0.name).tag(Optional($0.id)) }
                             }
                         }
                     }.padding(15).musePanel(radius: 14)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("贴到哪些屏幕").font(.subheadline.weight(.semibold))
-                        Text("可选多块屏；到点时各屏尽量换不同的图。")
+                        Text(L10n.tr("贴到哪些屏幕")).font(.subheadline.weight(.semibold))
+                        Text(L10n.tr("可选多块屏；到点时各屏尽量换不同的图。"))
                             .font(.caption).foregroundStyle(.secondary)
-                        Toggle("全部已连接屏幕", isOn: $targetAllDisplays)
+                        Toggle(L10n.tr("全部已连接屏幕"), isOn: $targetAllDisplays)
                         if !targetAllDisplays {
                             if displays.isEmpty {
-                                Text("还没有检测到屏幕。").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.tr("还没有检测到屏幕。")).font(.caption).foregroundStyle(.secondary)
                             } else {
                                 ForEach(displays) { display in
                                     Toggle(isOn: Binding(
@@ -2260,25 +2335,25 @@ private struct PlaylistEditor: View {
                     .padding(15)
                     .musePanel(radius: 14)
 
-                    Picker("播放顺序", selection: $order) { ForEach(PlaylistOrder.allCases) { Text($0.rawValue).tag($0) } }
+                    Picker(L10n.tr("播放顺序"), selection: $order) { ForEach(PlaylistOrder.allCases) { Text($0.rawValue.localized).tag($0) } }
                     IntervalControl(
                         seconds: intervalSeconds,
-                        nextCaption: "到点自动换下一张",
+                        nextCaption: L10n.tr("到点自动换下一张"),
                         minSeconds: WallpaperPlaylist.minIntervalSeconds,
                         maxSeconds: WallpaperPlaylist.maxIntervalSeconds
                     ) { intervalSeconds = $0 }
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("氛围动效").font(.subheadline.weight(.semibold))
-                        Text("作用于这条任务管到的桌面；随机氛围会在每次换图时重抽一种。")
+                        Text(L10n.tr("氛围动效")).font(.subheadline.weight(.semibold))
+                        Text(L10n.tr("作用于这条任务管到的桌面；随机氛围会在每次换图时重抽一种。"))
                             .font(.caption).foregroundStyle(.secondary)
-                        Picker("氛围", selection: $atmosphere) {
-                            ForEach(PlaylistAtmosphere.allCases) { Text($0.rawValue).tag($0) }
+                        Picker(L10n.tr("氛围"), selection: $atmosphere) {
+                            ForEach(PlaylistAtmosphere.allCases) { Text($0.rawValue.localized).tag($0) }
                         }
                         .pickerStyle(.menu)
                     }
                     .padding(15)
                     .musePanel(radius: 14)
-                    Toggle("保存后马上开始换", isOn: $enabled)
+                    Toggle(L10n.tr("保存后马上开始换"), isOn: $enabled)
                 }
                 .padding(.horizontal, 26)
                 .padding(.bottom, 16)
@@ -2286,9 +2361,9 @@ private struct PlaylistEditor: View {
 
             Divider().opacity(0.28)
             HStack {
-                Button("取消") { dismiss() }
+                Button(L10n.tr("取消")) { dismiss() }
                 Spacer()
-                Button("保存") { commit() }
+                Button(L10n.tr("保存")) { commit() }
                     .buttonStyle(.borderedProminent)
                     .disabled(!canSave)
             }
@@ -2338,7 +2413,9 @@ private struct PlaylistEditor: View {
                 lastArtworkIDsByDisplay: lastArtworkIDsByDisplay,
                 targetDisplayIDs: resolvedTargetDisplayIDs,
                 atmosphere: atmosphere,
-                priority: existingPriority
+                priority: existingPriority,
+                shuffleQueueIDs: shuffleQueueIDs,
+                shufflePoolIDs: shufflePoolIDs
             )
         )
         dismiss()
@@ -2361,6 +2438,7 @@ private struct PlaylistEditor: View {
 }
 
 private struct IntervalControl: View {
+    @Environment(\.locale) private var interfaceLocale
     let seconds: Int
     let nextCaption: String
     var minSeconds: Int = InspirationChannel.minIntervalSeconds
@@ -2418,15 +2496,15 @@ private struct IntervalControl: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text("每").font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.muted)
-                TextField("数量", text: Binding(
+                Text(L10n.tr("每")).font(.caption.weight(.semibold)).foregroundStyle(MuseTheme.muted)
+                TextField(L10n.tr("数量"), text: Binding(
                     get: { typedAmount.isEmpty ? "\(amount)" : typedAmount },
                     set: { typedAmount = $0 }
                 ))
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 64)
                 .onSubmit { commitTypedAmount() }
-                Picker("单位", selection: Binding(
+                Picker(L10n.tr("单位"), selection: Binding(
                     get: { unit },
                     set: { newUnit in
                         let currentAmount = Int(typedAmount) ?? amount
@@ -2435,11 +2513,11 @@ private struct IntervalControl: View {
                         onChange(seconds(amount: currentAmount, unit: newUnit))
                     }
                 )) {
-                    ForEach(InspirationChannel.IntervalUnit.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(InspirationChannel.IntervalUnit.allCases) { Text($0.rawValue.localized).tag($0) }
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                .frame(width: 72)
+                .frame(minWidth: 100)
                 Stepper("", value: Binding(
                     get: { amount },
                     set: { newAmount in
@@ -2456,7 +2534,7 @@ private struct IntervalControl: View {
                     .lineLimit(2)
             }
             if showsShortIntervalWarning {
-                Text("间隔过短会频繁换图，更耗电；一般建议 30 秒以上。")
+                Text(L10n.tr("间隔过短会频繁换图，更耗电；一般建议 30 秒以上。"))
                     .font(.caption2)
                     .foregroundStyle(MuseTheme.amber)
             }
@@ -2484,7 +2562,7 @@ private struct IntervalControl: View {
         )
         let trimmed = nextCaption.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return cadence }
-        if trimmed.hasPrefix("下次") {
+        if trimmed.hasPrefix(L10n.tr("下次")) {
             return trimmed
         }
         return "\(trimmed) · \(cadence)"
@@ -2503,6 +2581,7 @@ private struct IntervalControl: View {
 }
 
 private struct CompactCountField: View {
+    @Environment(\.locale) private var interfaceLocale
     let value: Int
     let onChange: (Int) -> Void
     @State private var typed = ""
@@ -2510,7 +2589,7 @@ private struct CompactCountField: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            TextField("张数", text: Binding(
+            TextField(L10n.tr("张数"), text: Binding(
                 get: { typed.isEmpty ? "\(value)" : typed },
                 set: { typed = $0.filter(\.isNumber) }
             ))
@@ -2522,7 +2601,7 @@ private struct CompactCountField: View {
             .onChange(of: focused) { _, isFocused in
                 if !isFocused { commitTyped() }
             }
-            Text("张")
+            Text(L10n.tr("张"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(MuseTheme.muted)
             Stepper("", value: Binding(
@@ -2535,7 +2614,7 @@ private struct CompactCountField: View {
             .labelsHidden()
             .controlSize(.mini)
         }
-        .help("直接输入想出的张数")
+        .help(L10n.tr("直接输入想出的张数"))
         .onChange(of: value) { _, _ in
             if typed.isEmpty == false, Int(typed) == value { typed = "" }
         }
@@ -2551,6 +2630,7 @@ private struct CompactCountField: View {
 }
 
 private struct CountControl: View {
+    @Environment(\.locale) private var interfaceLocale
     let value: Int
     let caption: String
     let onChange: (Int) -> Void
@@ -2558,9 +2638,9 @@ private struct CountControl: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("张数").font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
+            Text(L10n.tr("张数")).font(.caption2.weight(.bold)).foregroundStyle(MuseTheme.muted)
             HStack(spacing: 8) {
-                TextField("张", text: Binding(
+                TextField(L10n.tr("张"), text: Binding(
                     get: { typed.isEmpty ? "\(value)" : typed },
                     set: { typed = $0 }
                 ))

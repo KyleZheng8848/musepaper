@@ -128,6 +128,12 @@ final class VariationPlannerTests: XCTestCase {
         }
     }
 
+    func testCafeChalkboardUsesInteriorNotGenericFogClimate() {
+        let combo = planner.plan(idea: "一个咖啡店门口有一个黑板", count: 1, seed: 3)[0]
+        XCTAssertEqual(combo.themeKey, "interior", combo.visualPhrase)
+        XCTAssertFalse(combo.visualPhrase.contains("薄雾把后景削成淡色的层"), combo.visualPhrase)
+    }
+
     func testVariationPhrasesAreDimensionsNotProps() {
         let ideas = ["超级无敌峡湾地貌", "马尔代夫的果冻海", "城市风景", "宇宙"]
         let banned = ["孤树", "路灯", "玻璃幕墙", "钟楼", "穹顶", "渔港", "灯塔", "椅子", "书架", "水箱", "天线", "桥墩", "窗格"]

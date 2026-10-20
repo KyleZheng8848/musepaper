@@ -23,7 +23,7 @@ enum WallpaperTransition: String, Codable, CaseIterable, Identifiable, Sendable 
 @MainActor
 final class WallpaperController {
     static let fillOptions: [NSWorkspace.DesktopImageOptionKey: Any] = [
-        .imageScaling: NSImageScaling.scaleAxesIndependently.rawValue,
+        .imageScaling: Int(NSImageScaling.scaleAxesIndependently.rawValue),
         .allowClipping: true,
         .fillColor: NSColor.black
     ]

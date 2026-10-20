@@ -104,7 +104,7 @@ actor CredentialStore {
             cached = payload
             return payload
         } catch {
-            throw MusepaperError.persistenceFailed("本机 AK 凭据读取失败：\(error.localizedDescription)")
+            throw MusepaperError.persistenceFailed(L10n.tr("本机 AK 凭据读取失败：\(error.localizedDescription)"))
         }
     }
 
@@ -119,7 +119,7 @@ actor CredentialStore {
             try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: fileURL.path)
             cached = payload
         } catch {
-            throw MusepaperError.persistenceFailed("本机 AK 凭据保存失败：\(error.localizedDescription)")
+            throw MusepaperError.persistenceFailed(L10n.tr("本机 AK 凭据保存失败：\(error.localizedDescription)"))
         }
     }
 }

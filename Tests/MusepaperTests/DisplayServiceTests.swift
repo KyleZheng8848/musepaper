@@ -10,11 +10,11 @@ final class DisplayServiceTests: XCTestCase {
 
         XCTAssertEqual(profiles.count, 2)
         XCTAssertEqual(profiles[0].id, "screen-0")
-        XCTAssertEqual(profiles[0].name, "主显示器")
+        XCTAssertEqual(profiles[0].name, L10n.tr("主显示器"))
         XCTAssertEqual(profiles[0].width, 3600)
         XCTAssertEqual(profiles[0].height, 2338)
         XCTAssertEqual(profiles[1].id, "screen-1")
-        XCTAssertEqual(profiles[1].name, "显示器 2")
+        XCTAssertEqual(profiles[1].name, L10n.tr("显示器 \(2)"))
         XCTAssertEqual(profiles[1].width, 1920)
     }
 
@@ -24,7 +24,7 @@ final class DisplayServiceTests: XCTestCase {
         ])
 
         XCTAssertEqual(profiles.count, 1)
-        XCTAssertEqual(profiles[0].name, "主显示器")
+        XCTAssertEqual(profiles[0].name, L10n.tr("主显示器"))
         XCTAssertEqual(profiles[0].id, "screen-0")
     }
 
@@ -41,7 +41,7 @@ final class DisplayServiceTests: XCTestCase {
     func testLiveServiceFindsAtLeastTheMainDisplay() {
         let profiles = DisplayService().profiles()
         XCTAssertFalse(profiles.isEmpty)
-        XCTAssertEqual(profiles[0].name, "主显示器")
+        XCTAssertFalse(profiles[0].name.isEmpty)
         XCTAssertEqual(profiles[0].id, "screen-0")
     }
 }

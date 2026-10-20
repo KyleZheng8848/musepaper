@@ -65,6 +65,25 @@ def main() -> int:
         else:
             ok(f"{name} HTTP {status}")
 
+    try:
+        with urllib.request.urlopen(base + "index.html", timeout=60) as resp:
+            page = resp.read().decode("utf-8", errors="replace")
+        version = str(local.get("version") or "")
+        for needle in (
+            f"Musepaper {version}",
+            "Musepaper-latest-arm64.dmg",
+            "Musepaper-latest-x64.dmg",
+            "安装并打开.command",
+            "全部版本",
+            "latest.json",
+        ):
+            if needle not in page:
+                fail(f"index.html 缺少「{needle}」")
+            else:
+                ok(f"index.html 含 {needle}")
+    except Exception as err:
+        fail(f"无法读取远端 index.html：{err}")
+
     remote_manifest = None
     try:
         with urllib.request.urlopen(base + "latest.json", timeout=60) as resp:

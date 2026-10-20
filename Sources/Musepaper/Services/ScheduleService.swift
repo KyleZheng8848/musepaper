@@ -14,7 +14,7 @@ final class ScheduleService {
         ) ?? date.addingTimeInterval(86400)
     }
 
-    nonisolated static func nextFireCaption(hour: Int, from date: Date = Date(), locale: Locale = Locale(identifier: "zh_CN")) -> String {
+    nonisolated static func nextFireCaption(hour: Int, from date: Date = Date(), locale: Locale = L10n.locale) -> String {
         caption(for: nextFireDate(hour: hour, from: date), locale: locale)
     }
 
@@ -42,7 +42,7 @@ final class ScheduleService {
 
     nonisolated static func nextFireCaption(
         intervalHours: Int, lastProducedAt: Date?, from date: Date = Date(),
-        locale: Locale = Locale(identifier: "zh_CN")
+        locale: Locale = L10n.locale
     ) -> String {
         nextFireCaption(
             intervalSeconds: InspirationChannel.clampedInterval(intervalHours) * 3600,
@@ -52,7 +52,7 @@ final class ScheduleService {
 
     nonisolated static func nextFireCaption(
         intervalSeconds: Int, lastProducedAt: Date?, from date: Date = Date(),
-        locale: Locale = Locale(identifier: "zh_CN")
+        locale: Locale = L10n.locale
     ) -> String {
         caption(
             for: nextFireDate(intervalSeconds: intervalSeconds, lastProducedAt: lastProducedAt, from: date),
@@ -63,7 +63,7 @@ final class ScheduleService {
     private nonisolated static func caption(for fire: Date, intervalSeconds: Int = 3600, locale: Locale) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
-        formatter.dateFormat = intervalSeconds % 60 == 0 ? "M月d日 HH:mm" : "M月d日 HH:mm:ss"
+        formatter.setLocalizedDateFormatFromTemplate(intervalSeconds % 60 == 0 ? "MMMd HHmm" : "MMMd HHmmss")
         return formatter.string(from: fire)
     }
 

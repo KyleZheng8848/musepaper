@@ -28,5 +28,11 @@ jobs:
         run: python3 -m unittest discover -s Tests/Publishing -v
       - name: Unit tests
         run: swift test
+      - name: Download page tests
+        run: python3 scripts/test_gen_download_page.py
+      - name: Integration regression checks
+        run: ./scripts/run-integration-smoke.sh
+      - name: Localization checks
+        run: ./scripts/run-localization-smoke.sh
       - name: Provider smoke test
         run: ./scripts/run-smoke.sh

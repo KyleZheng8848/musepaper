@@ -346,6 +346,7 @@ struct PromptEnhancementContext: Equatable, Sendable {
     var dimensionCombo: String = ""
     var frameIndex: Int = 0
     var frameCount: Int = 1
+    var imageModel: String = ""
 
     /// Build context off the main actor for parallel polish workers.
     static func makeParallel(
@@ -357,7 +358,8 @@ struct PromptEnhancementContext: Equatable, Sendable {
         display: DisplayProfile,
         seed: Int,
         dimensionCombo: String,
-        referenceImageCount: Int
+        referenceImageCount: Int,
+        imageModel: String = ""
     ) -> PromptEnhancementContext {
         let composer = PromptComposer()
         let resolvedChannel = channel.flatMap { $0.isSchemaTemplate ? nil : $0 }
@@ -392,7 +394,8 @@ struct PromptEnhancementContext: Equatable, Sendable {
             variationAxes: composer.usableVisual(resolvedChannel?.resolvedVariationAxes ?? "") ?? "",
             variationSeed: seed,
             promptStrategy: resolvedChannel?.resolvedPromptStrategy.rawValue,
-            dimensionCombo: composer.usableVisual(dimensionCombo) ?? ""
+            dimensionCombo: composer.usableVisual(dimensionCombo) ?? "",
+            imageModel: imageModel
         )
     }
 }

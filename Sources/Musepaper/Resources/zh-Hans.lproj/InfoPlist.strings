@@ -1,0 +1,4 @@
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Musepaper 用当前位置显示桌面天气与温度，不会用于其它用途。";
+"NSLocationAlwaysUsageDescription" = "Musepaper 用当前位置显示桌面天气与温度，不会用于其它用途。";
+"NSLocationUsageDescription" = "Musepaper 用当前位置显示桌面天气与温度，不会用于其它用途。";
+"NSLocationWhenInUseUsageDescription" = "Musepaper 用当前位置显示桌面天气与温度，不会用于其它用途。";

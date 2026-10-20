@@ -13,14 +13,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from lib.oss_client import OssClient, resolve_oss_config  # noqa: E402
+
+ARTIFACT_RE = re.compile(
+    r"^Musepaper-(\d+\.\d+\.\d+(?:-[\w.]+)?)-(arm64|x64)\.(dmg|zip)$",
+    re.I,
+)
 
 
 def human(n: int) -> str:
@@ -78,23 +85,72 @@ def enrich_manifest(manifest: dict, base_url: str) -> dict:
     return out
 
 
-def generate_index(manifest_path: Path, release_dir: Path, base_url: str, out: Path) -> None:
+def prepare_web_icon(dest: Path) -> Path | None:
+    src = ROOT / "Packaging" / "Resources" / "AppIcon-1024.png"
+    if not src.is_file():
+        return None
+    dest.parent.mkdir(parents=True, exist_ok=True)
     subprocess.check_call(
-        [
-            sys.executable,
-            str(ROOT / "scripts" / "gen-download-page.py"),
-            "--manifest",
-            str(manifest_path),
-            "--base-url",
-            base_url,
-            "--packs-catalog-url",
-            base_url + "packs/catalog.json",
-            "--release-dir",
-            str(release_dir),
-            "--out",
-            str(out),
-        ]
+        ["sips", "-s", "format", "png", "-Z", "256", str(src), "--out", str(dest)],
+        stdout=subprocess.DEVNULL,
     )
+    return dest if dest.is_file() else None
+
+
+def snapshot_catalog(url: str, dest: Path) -> Path | None:
+    try:
+        with urllib.request.urlopen(url, timeout=20) as resp:
+            dest.write_bytes(resp.read())
+        return dest
+    except Exception:
+        return None
+
+
+def remote_versioned_files(oss: OssClient, prefix: str) -> list[dict]:
+    extra: list[dict] = []
+    for item in oss.list(prefix):
+        name = item["key"][len(prefix) :] if item["key"].startswith(prefix) else item["key"]
+        if "/" in name or not ARTIFACT_RE.match(name):
+            continue
+        extra.append({"name": name, "size": item["size"]})
+    return extra
+
+
+def generate_index(
+    manifest_path: Path,
+    release_dir: Path,
+    base_url: str,
+    out: Path,
+    *,
+    extra_files: list[dict] | None = None,
+    catalog_path: Path | None = None,
+    icon_url: str = "",
+) -> None:
+    extra_path = release_dir / "download-extra-files.json"
+    cmd = [
+        sys.executable,
+        str(ROOT / "scripts" / "gen-download-page.py"),
+        "--manifest",
+        str(manifest_path),
+        "--base-url",
+        base_url,
+        "--packs-catalog-url",
+        base_url + "packs/catalog.json",
+        "--release-dir",
+        str(release_dir),
+        "--out",
+        str(out),
+        "--changelog",
+        str(ROOT / "CHANGELOG.md"),
+    ]
+    if extra_files:
+        extra_path.write_text(json.dumps(extra_files, ensure_ascii=False), encoding="utf-8")
+        cmd.extend(["--extra-files", str(extra_path)])
+    if catalog_path and catalog_path.is_file():
+        cmd.extend(["--catalog", str(catalog_path)])
+    if icon_url:
+        cmd.extend(["--icon-url", icon_url])
+    subprocess.check_call(cmd)
 
 
 def main() -> int:
@@ -119,6 +175,9 @@ def main() -> int:
     cfg = resolve_oss_config(ROOT, require_credentials=not args.dry_run)
     base_url = cfg["baseUrl"]
     prefix = cfg["keyPrefix"]
+    icon_url = base_url + "assets/icon.png"
+    icon_local = prepare_web_icon(release_dir / "assets" / "icon.png")
+    catalog_local = snapshot_catalog(base_url + "packs/catalog.json", release_dir / "packs.catalog.json")
 
     print(
         f"→ Musepaper {version} → oss://{cfg['bucket']}/{prefix}"
@@ -126,8 +185,21 @@ def main() -> int:
         flush=True,
     )
 
+    extra_files: list[dict] = []
+    if not args.dry_run:
+        listing_oss = OssClient(cfg)
+        extra_files = remote_versioned_files(listing_oss, prefix)
+
     index_local = release_dir / "index.html"
-    generate_index(manifest_path, release_dir, base_url, index_local)
+    generate_index(
+        manifest_path,
+        release_dir,
+        base_url,
+        index_local,
+        extra_files=extra_files,
+        catalog_path=catalog_local,
+        icon_url=icon_url if icon_local else "",
+    )
     enriched = enrich_manifest(manifest, base_url)
     # CPET-compatible fields for update checkers.
     assets = []
@@ -146,6 +218,8 @@ def main() -> int:
     if args.dry_run:
         for path in uploads:
             print(f"DRY  {path.name} → {prefix}{path.name} ({human(path.stat().st_size)})")
+        if icon_local:
+            print(f"DRY  assets/icon.png → {prefix}assets/icon.png ({human(icon_local.stat().st_size)})")
         print(f"DRY  latest.json → {prefix}latest.json")
         print(f"DRY  index.html → {prefix}index.html")
         print(
@@ -190,6 +264,33 @@ def main() -> int:
         oss.put_file(path, key)
         print(f"ok {time.time() - started:.1f}s", flush=True)
         uploaded += 1
+
+    if icon_local:
+        icon_key = prefix + "assets/icon.png"
+        icon_size = icon_local.stat().st_size
+        remote_icon = oss.head_size(icon_key) if skip_existing else None
+        if remote_icon is not None and remote_icon == icon_size:
+            print(f"  skip assets/icon.png ({human(icon_size)})", flush=True)
+            skipped += 1
+        else:
+            print(f"  put assets/icon.png ({human(icon_size)}) …", flush=True, end=" ")
+            oss.put_file(icon_local, icon_key)
+            print("ok", flush=True)
+            uploaded += 1
+
+    shot_local = ROOT / "assets" / "screenshots" / "ui-main.png"
+    if shot_local.is_file():
+        shot_key = prefix + "assets/screenshots/ui-main.png"
+        shot_size = shot_local.stat().st_size
+        remote_shot = oss.head_size(shot_key) if skip_existing else None
+        if remote_shot is not None and remote_shot == shot_size:
+            print(f"  skip assets/screenshots/ui-main.png ({human(shot_size)})", flush=True)
+            skipped += 1
+        else:
+            print(f"  put assets/screenshots/ui-main.png ({human(shot_size)}) …", flush=True, end=" ")
+            oss.put_file(shot_local, shot_key)
+            print("ok", flush=True)
+            uploaded += 1
 
     # Manifests last — so clients never see a version whose packages 404.
     print("  put latest.json …", flush=True, end=" ")

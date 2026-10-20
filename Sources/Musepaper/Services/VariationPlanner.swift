@@ -268,7 +268,7 @@ struct VariationPlanner: Sendable {
             if matches(text, ["魔幻", "奇幻", "仙侠", "城堡", "浮空", "金龙", "神龙", "巨龙", "飞龙", "五爪", "麒麟", "貔貅", "神兽", "凤凰", "fantasy", "castle", "dragon", "phoenix"]) {
                 return .fantasy
             }
-            if matches(text, ["室内", "房间", "书房", "咖啡馆", "窗边", "interior", "apartment"]) {
+            if matches(text, ["室内", "房间", "书房", "咖啡馆", "咖啡店", "黑板", "店门口", "窗边", "interior", "apartment", "cafe", "coffee shop", "chalkboard"]) {
                 return .interior
             }
             if matches(text, ["峡湾", "fjord", "槽谷", "冰川", "雪峰"]) {
@@ -277,7 +277,7 @@ struct VariationPlanner: Sendable {
             if matches(text, ["马尔代夫", "环礁", "泻湖", "果冻海", "海岸", "海边", "沙滩", "灯塔", "海港", "coast", "beach", "lighthouse", "harbor"]) {
                 return .coast
             }
-            if matches(text, ["城市", "都会", "街景", "天际线", "都市", "city", "skyline", "street", "urban"]) {
+            if matches(text, ["城市", "都会", "街景", "天际线", "都市", "上海", "北京", "东京", "巴黎", "纽约", "伦敦", "香港", "city", "skyline", "street", "urban", "shanghai", "beijing"]) {
                 return .city
             }
             if matches(text, ["山", "谷", "林", "森", "沙漠", "草原", "湖", "mountain", "forest", "desert", "valley"]) {

@@ -6,7 +6,7 @@ struct DisplayService {
         NSScreen.screens.enumerated().map { index, screen in
             let frame = screen.frame
             let scale = screen.backingScaleFactor
-            let fallback = index == 0 ? "主显示器" : "显示器 \(index + 1)"
+            let fallback = index == 0 ? L10n.tr("主显示器") : L10n.tr("显示器 \(index + 1)")
             let localized = screen.localizedName.trimmingCharacters(in: .whitespacesAndNewlines)
             return DisplayProfile(
                 id: Self.displayID(index: index),
@@ -22,7 +22,7 @@ struct DisplayService {
         probes.enumerated().map { index, probe in
             DisplayProfile(
                 id: displayID(index: index),
-                name: index == 0 ? "主显示器" : "显示器 \(index + 1)",
+                name: index == 0 ? L10n.tr("主显示器") : L10n.tr("显示器 \(index + 1)"),
                 width: probe.width,
                 height: probe.height,
                 scale: probe.scale

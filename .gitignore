@@ -18,3 +18,9 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 .DS_Store
 *.swp
+
+# Local agent configuration and private build notes
+.cursor/
+/BUILD_LOG.md
+/BUILD_PROMPT.md
+/HARSH_LOOP.md

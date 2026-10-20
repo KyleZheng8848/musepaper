@@ -37,6 +37,10 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// Ambient motion over the still desktop wallpaper (under apps).
     var livingWallpaperEnabled: Bool?
     var livingWallpaperStyle: LivingWallpaperStyle?
+    /// Extra holographic foil on top of the atmosphere motion. Default off.
+    var livingHoloFoil: LivingHoloFoil?
+    /// Optional mask-based relief on the photo. Default off.
+    var livingDepthStyle: LivingDepthStyle?
     /// Center desktop clock / date.
     var desktopClockEnabled: Bool?
     var desktopClockFace: DesktopClockFace?

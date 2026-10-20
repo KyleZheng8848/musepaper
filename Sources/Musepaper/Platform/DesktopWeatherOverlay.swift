@@ -12,7 +12,7 @@ final class DesktopWeatherOverlay {
     private var screenSignature = ""
     private var refreshTimer: Timer?
     private var latest: WeatherSnapshot?
-    private var statusText = "天气加载中…"
+    private var statusText = L10n.tr("天气加载中…")
     private let service = WeatherService()
 
     func update(enabled: Bool, unit: WeatherTemperatureUnit) {
@@ -153,7 +153,7 @@ final class DesktopWeatherOverlay {
             applySnapshot()
         } catch {
             latest = nil
-            statusText = (error as? LocalizedError)?.errorDescription ?? "天气暂不可用"
+            statusText = (error as? LocalizedError)?.errorDescription ?? L10n.tr("天气暂不可用")
             applySnapshot()
         }
     }
@@ -170,9 +170,9 @@ final class DesktopWeatherOverlay {
             }
         } else {
             for label in tempLabels { label.stringValue = "--°" }
-            for label in detailLabels { label.stringValue = statusText.isEmpty ? "天气加载中…" : statusText }
+            for label in detailLabels { label.stringValue = statusText.isEmpty ? L10n.tr("天气加载中…") : statusText }
             for icon in iconViews {
-                icon.image = NSImage(systemSymbolName: "cloud.fill", accessibilityDescription: "天气")
+                icon.image = NSImage(systemSymbolName: "cloud.fill", accessibilityDescription: L10n.tr("天气"))
             }
         }
     }

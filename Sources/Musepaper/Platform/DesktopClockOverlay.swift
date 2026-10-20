@@ -42,20 +42,20 @@ final class DesktopClockOverlay {
     private var clockTimer: Timer?
     private var weatherTimer: Timer?
     private var latestWeather: WeatherSnapshot?
-    private var weatherStatus = "天气加载中…"
+    private var weatherStatus = L10n.tr("天气加载中…")
     private let weatherService = WeatherService()
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
+        f.locale = L10n.locale
         f.dateFormat = "HH:mm:ss"
         return f
     }()
 
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
-        f.dateFormat = "EEEE · M月d日"
+        f.locale = L10n.locale
+        f.dateFormat = L10n.isChinese ? "EEEE · M月d日" : "EEEE · MMM d"
         return f
     }()
 
@@ -498,7 +498,7 @@ final class DesktopClockOverlay {
             applyWeather()
         } catch {
             latestWeather = nil
-            weatherStatus = (error as? LocalizedError)?.errorDescription ?? "天气暂不可用"
+            weatherStatus = (error as? LocalizedError)?.errorDescription ?? L10n.tr("天气暂不可用")
             applyWeather()
         }
     }
@@ -523,16 +523,24 @@ final class DesktopClockOverlay {
             }
         } else {
             for label in weatherTempLabels { label.stringValue = "--°" }
-            for label in weatherLabels { label.stringValue = weatherStatus.isEmpty ? "天气加载中…" : weatherStatus }
+            for label in weatherLabels { label.stringValue = weatherStatus.isEmpty ? L10n.tr("天气加载中…") : weatherStatus }
             for (idx, icon) in weatherIcons.enumerated() {
                 let point = weatherTempLabels.indices.contains(idx)
                     ? max(15, weatherTempLabels[idx].font?.pointSize ?? 16)
                     : 16
                 let config = NSImage.SymbolConfiguration(pointSize: point, weight: .medium)
-                icon.image = NSImage(systemSymbolName: "cloud.fill", accessibilityDescription: "天气")?
+                icon.image = NSImage(systemSymbolName: "cloud.fill", accessibilityDescription: L10n.tr("天气"))?
                     .withSymbolConfiguration(config)
             }
         }
+    }
+
+    func refreshLanguage() {
+        timeFormatter.locale = L10n.locale
+        dateFormatter.locale = L10n.locale
+        dateFormatter.dateFormat = L10n.isChinese ? "EEEE · M月d日" : "EEEE · MMM d"
+        refreshText()
+        applyWeather()
     }
 
     private func refreshText() {
@@ -542,27 +550,27 @@ final class DesktopClockOverlay {
         switch face {
         case .poster:
             let f = DateFormatter()
-            f.locale = Locale(identifier: "zh_CN")
-            f.dateFormat = "M月d日 · EEEE"
+            f.locale = L10n.locale
+            f.dateFormat = L10n.isChinese ? "M月d日 · EEEE" : "MMM d · EEEE"
             date = f.string(from: now)
         case .badge:
             let short = DateFormatter()
-            short.locale = Locale(identifier: "zh_CN")
+            short.locale = L10n.locale
             short.dateFormat = "M/d EEE"
             date = short.string(from: now)
         case .dayHero:
             let day = DateFormatter()
-            day.locale = Locale(identifier: "zh_CN")
+            day.locale = L10n.locale
             day.dateFormat = "d"
             let rest = DateFormatter()
-            rest.locale = Locale(identifier: "zh_CN")
-            rest.dateFormat = "M月 · EEEE"
+            rest.locale = L10n.locale
+            rest.dateFormat = L10n.isChinese ? "M月 · EEEE" : "MMMM · EEEE"
             // Time row shows HH:mm:ss; date row shows big day via special format in label — keep readable.
-            date = "\(day.string(from: now))日\n\(rest.string(from: now))"
+            date = "\(day.string(from: now))\(L10n.isChinese ? "日" : "")\n\(rest.string(from: now))"
         case .horizon:
             let f = DateFormatter()
-            f.locale = Locale(identifier: "zh_CN")
-            f.dateFormat = "EEEE  ·  M月d日"
+            f.locale = L10n.locale
+            f.dateFormat = L10n.isChinese ? "EEEE  ·  M月d日" : "EEEE  ·  MMM d"
             date = f.string(from: now)
         default:
             date = dateFormatter.string(from: now)

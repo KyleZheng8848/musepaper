@@ -32,8 +32,7 @@ final class PromptAgentTests: XCTestCase {
                 || result.text.localizedCaseInsensitiveContains("skyline"),
             result.text
         )
-        XCTAssertFalse(result.text.contains("超宽"))
-        XCTAssertTrue(result.text.localizedCaseInsensitiveContains("wide") || result.text.localizedCaseInsensitiveContains("shanghai"), result.text)
+        XCTAssertTrue(result.text.contains("上海") || result.text.localizedCaseInsensitiveContains("shanghai"), result.text)
         XCTAssertEqual(result.request.url?.path, "/v1/chat/completions")
     }
 
@@ -109,19 +108,27 @@ final class PromptAgentTests: XCTestCase {
         let body = try JSONSerialization.jsonObject(with: result.request.httpBody ?? Data()) as? [String: Any]
         let input = body?["input"] as? String ?? ""
         let instructions = body?["instructions"] as? String ?? ""
-        XCTAssertTrue(input.contains("Core subject") || input.contains("Core meaning") || input.contains("城市风景"))
+        XCTAssertTrue(input.contains("主题："), input)
+        XCTAssertTrue(input.contains("城市风景"), input)
+        XCTAssertTrue(input.contains("光："), input)
+        XCTAssertTrue(input.contains("看："), input)
         XCTAssertFalse(input.contains("只描写景物本身"))
         XCTAssertFalse(input.contains("用户原始想法："))
         XCTAssertFalse(input.contains("本地约束草稿："))
         XCTAssertFalse(input.contains("2560"))
         XCTAssertFalse(input.contains("1440"))
         XCTAssertFalse(input.contains("没有文字"))
-        XCTAssertTrue(input.localizedCaseInsensitiveContains("cinematic") || instructions.localizedCaseInsensitiveContains("cinematic"))
+        XCTAssertFalse(input.contains("Those characters"), input)
+        XCTAssertFalse(input.contains("This frame differs"), input)
+        XCTAssertFalse(instructions.contains("no text"))
+        XCTAssertFalse(instructions.contains("没有文字"))
         XCTAssertFalse(instructions.localizedCaseInsensitiveContains("English only"))
-        XCTAssertTrue(instructions.contains("photograph") || input.contains("photograph"))
-        XCTAssertTrue(instructions.contains("no text"))
-        XCTAssertTrue(instructions.contains("person") || input.contains("person"))
-        XCTAssertTrue(instructions.localizedCaseInsensitiveContains("Chinese") || input.localizedCaseInsensitiveContains("Keep the subject's name"))
+        XCTAssertTrue(instructions.contains("专名") || instructions.contains("画面"), instructions)
+        XCTAssertFalse(instructions.contains("空院子"), instructions)
+        XCTAssertFalse(instructions.contains("阴间"), instructions)
+        XCTAssertFalse(instructions.contains("person would actually take"))
+        XCTAssertFalse(input.contains("wallpaper"), input)
+        XCTAssertFalse(input.contains("desktop"), input)
     }
 
     func testEnhanceInputKeepsFigureSubjectInsteadOfLandscape() async throws {
@@ -153,10 +160,11 @@ final class PromptAgentTests: XCTestCase {
         let body = try JSONSerialization.jsonObject(with: PromptAgentProtocol.lastRequest?.httpBody ?? Data()) as? [String: Any]
         let input = body?["input"] as? String ?? ""
         XCTAssertTrue(input.contains("美女"))
-        XCTAssertTrue(input.contains("person"))
+        XCTAssertTrue(input.contains("主题："), input)
+        XCTAssertFalse(input.contains("这是人"), input)
         XCTAssertFalse(input.contains("只描写景物本身"))
         XCTAssertFalse(input.contains("开阔的风景"))
-        XCTAssertTrue(input.contains("Keep the person") || input.contains("person"))
+        XCTAssertFalse(input.contains("Keep the person"), input)
     }
 
     func testAlipayHostUsesChatCompletions() {
@@ -277,24 +285,57 @@ final class PromptAgentTests: XCTestCase {
             coreKeywords: "温暖的春天的悠闲午后"
         )
         let text = try await agent.enhance(mood)
-        XCTAssertFalse(PromptComposer().containsCJK(text), text)
-        XCTAssertTrue(text.localizedCaseInsensitiveContains("spring") || text.localizedCaseInsensitiveContains("afternoon"), text)
+        XCTAssertTrue(text.contains("春天") || text.contains("午后"), text)
         XCTAssertTrue(PromptComposer().hasConcreteSubject(text), text)
-        XCTAssertFalse(text.contains("超广角"), text)
+        XCTAssertFalse(text.contains("写着"), text)
         XCTAssertFalse(text.localizedCaseInsensitiveContains("welcome"), text)
         let body = try JSONSerialization.jsonObject(with: PromptAgentProtocol.lastRequest?.httpBody ?? Data()) as? [String: Any]
         let input = body?["input"] as? String ?? ""
         XCTAssertTrue(input.contains("温暖的春天的悠闲午后"))
-        XCTAssertTrue(
-            input.contains("visible thing")
-                || input.contains("still life")
-                || input.contains("interior")
-                || input.contains("empty place")
-                || input.contains("person in the light"),
-            input
+        XCTAssertTrue(input.contains("主题："), input)
+        XCTAssertTrue(input.contains("光："), input)
+        XCTAssertFalse(input.contains("不要"), input)
+        XCTAssertFalse(input.contains("看见轮换"), input)
+        XCTAssertFalse(input.contains("no text"), input)
+        XCTAssertFalse(input.contains("Those characters"), input)
+    }
+
+    func testEnhancePlansDaylightAndBlankBoardForLLaDACafe() async throws {
+        PromptAgentProtocol.responseData = Data(#"{"output_text":"咖啡店门口，夜雾里一个剪影，黑板上写着qwennewbee欢迎"}"#.utf8)
+        PromptAgentProtocol.lastRequest = nil
+        let sessionConfiguration = URLSessionConfiguration.ephemeral
+        sessionConfiguration.protocolClasses = [PromptAgentProtocol.self]
+        let agent = try PromptAgent(
+            configuration: PromptModelConfiguration(enabled: true),
+            apiKey: "test-key",
+            session: URLSession(configuration: sessionConfiguration)
         )
-        XCTAssertTrue(input.contains("Do not default to a woman") || input.contains("Do not lock"), input)
-        XCTAssertTrue(input.localizedCaseInsensitiveContains("cinematic") || input.localizedCaseInsensitiveContains("camera"))
+        let cafe = PromptEnhancementContext(
+            rawPrompt: "一个咖啡店门口有一个黑板",
+            deterministicPrompt: "一个咖啡店门口有一个黑板",
+            channelName: nil, channelEssence: nil, requiredElements: nil,
+            excludedElements: "文字、水印", palette: nil, emptySpace: "无",
+            displayWidth: 2560, displayHeight: 1440, referenceImageCount: 0,
+            coreKeywords: "一个咖啡店门口有一个黑板",
+            imageModel: "LLaDA-Image"
+        )
+        let text = try await agent.enhance(cafe)
+        let last = try XCTUnwrap(PromptAgentProtocol.lastRequest, "LLaDA 开 Agent，必须打文本 API")
+        let body = try JSONSerialization.jsonObject(with: last.httpBody ?? Data()) as? [String: Any]
+        let input = body?["input"] as? String ?? ""
+        let instructions = body?["instructions"] as? String ?? ""
+        XCTAssertTrue(input.contains("主题："), input)
+        XCTAssertTrue(input.contains("咖啡店") || input.contains("黑板"), input)
+        XCTAssertFalse(input.contains("Those characters"), input)
+        XCTAssertFalse(input.contains("This frame differs"), input)
+        XCTAssertTrue(instructions.contains("一张电影感照片"), instructions)
+        XCTAssertEqual(body?["max_output_tokens"] as? Int, 160)
+        XCTAssertTrue(text.contains("电影感照片"), text)
+        XCTAssertTrue(text.contains("咖啡店") || text.contains("黑板"), text)
+        XCTAssertFalse(text.contains("写着"), text)
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("qwennewbee"), text)
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("this frame differs"), text)
+        XCTAssertFalse(text.localizedCaseInsensitiveContains("those characters"), text)
     }
 
     private var context: PromptEnhancementContext {
@@ -315,7 +356,7 @@ private final class PromptAgentProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        Self.lastRequest = request
+        Self.lastRequest = request.capturingBody()
         let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Self.responseData)

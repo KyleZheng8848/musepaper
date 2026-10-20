@@ -165,3 +165,15 @@ Read the [contribution guide](CONTRIBUTING.md) (Simplified Chinese) before submi
 ## License
 
 Copyright © 2026 SofunAI Studio and Musepaper contributors. The source code is available under the [MIT License](LICENSE). Rights to third-party model services, assets, reference images, and generated content depend on their respective terms and permissions.
+
+### Interface language
+
+Open **Settings → Language / 语言** and choose **Follow System**, **简体中文**, or **English**. Changes apply immediately and are saved for the next launch. Unsupported system languages fall back to English. Prompts, saved series names, tags, and artwork retain their original content.
+
+Run `./scripts/run-localization-smoke.sh` to verify language selection, fallback, interpolation, catalog coverage, and content preservation without XCTest.
+
+### Integrated release 0.5.63
+
+This release combines the 0.5.62 motion and model updates with Chinese/English selection and SofunAI branding. It adds a closed-loop random wander effect, continuous ambient motion, image-model-specific LLaDA/Qwen prompts and sizes, and persistent shuffle playback without repeats within a cycle. Existing libraries and saved preferences remain compatible.
+
+Additional checks: `./scripts/run-integration-smoke.sh`, `./scripts/run-localization-smoke.sh`, and `python3 scripts/test_gen_download_page.py`.

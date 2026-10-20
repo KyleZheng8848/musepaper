@@ -22,26 +22,34 @@ struct PromptAgent: Sendable {
     }
 
     func enhance(_ context: PromptEnhancementContext) async throws -> String {
-        let request = try buildRequest(system: Self.systemPrompt, input: userInput(context))
+        let composer = PromptComposer()
+        let theme = composer.usableVisual(context.coreKeywords)
+            ?? composer.usableVisual(context.rawPrompt)
+            ?? ""
+        let seed = context.variationSeed ?? theme.hashValue
+        let dialect = ImagePromptDialect.infer(from: context.imageModel)
+        let request = try buildRequest(
+            system: Self.systemPrompt(for: dialect),
+            input: Self.visualUserInput(context),
+            maxTokens: dialect == .llada ? 160 : 900
+        )
         let data = try await perform(request)
         let text = try extractText(from: data)
-        let composer = PromptComposer()
         let rawText = clean(text)
         if composer.isSchemaPlaceholder(rawText) {
             throw MusepaperError.invalidResponse("Prompt Agent 回传了说明书而不是纯画面描述")
         }
         let cleaned = composer.enforcePureArtwork(rawText)
-        let theme = composer.usableVisual(context.coreKeywords)
-            ?? composer.usableVisual(context.rawPrompt)
-            ?? ""
-        let spoken = composer.spokenRewrite(cleaned, core: theme, seed: context.variationSeed ?? theme.hashValue)
+        let spoken = composer.finishAgentPrompt(cleaned, core: theme, seed: seed, model: context.imageModel)
         if spoken.count < 12 {
-            if theme.count >= 4 { return composer.spokenRewrite(theme, core: theme, seed: context.variationSeed ?? theme.hashValue) }
+            if theme.count >= 4 {
+                return composer.finishAgentPrompt(theme, core: theme, seed: seed, model: context.imageModel)
+            }
             throw MusepaperError.invalidResponse("Prompt Agent 返回内容过短")
         }
         if composer.containsInstructionLeak(spoken) {
             if theme.count >= 4 {
-                return composer.spokenRewrite(theme, core: theme, seed: context.variationSeed ?? theme.hashValue)
+                return composer.finishAgentPrompt(theme, core: theme, seed: seed, model: context.imageModel)
             }
             throw MusepaperError.invalidResponse("Prompt Agent 回传了说明书而不是纯画面描述")
         }
@@ -217,45 +225,48 @@ struct PromptAgent: Sendable {
         return url
     }
 
-    private func userInput(_ context: PromptEnhancementContext) -> String {
+    /// Facts only. Never send “Those characters / This frame differs / Keep them” —
+    /// LLaDA paints those words onto the wallpaper.
+    static func visualUserInput(_ context: PromptEnhancementContext) -> String {
         let composer = PromptComposer()
         let theme = composer.usableVisual(context.rawPrompt) ?? ""
         let essence = composer.usableVisual(context.channelEssence ?? "") ?? ""
         let include = composer.usableVisual(context.requiredElements ?? "") ?? ""
         let palette = composer.usableVisual(context.palette ?? "") ?? ""
         let keywords = composer.usableVisual(context.coreKeywords) ?? ""
-        let comboHint = composer.spokenHint(context.dimensionCombo)
         let subject = keywords.isEmpty ? theme : keywords
-        let core = subject.isEmpty ? "the given subject" : subject
-        let isFigure = composer.isFigureSubject(core) || composer.isFigureSubject(theme)
-        let moodOnly = composer.needsGroundedScene(core)
-
-        let spokenCore = composer.spokenHint(core)
-        var lines: [String] = [
-            "Write one short photograph prompt. Two sentences at most.",
-            "Core subject (keep this name, do not swap it): \(spokenCore.isEmpty ? core : spokenCore)",
-            "Keep the subject's name as the user wrote it. Do not translate the name away.",
-            "Describe the subject, light, and framing. Camera terms (angle, mm, cinematic) are fine."
+        let core = subject.isEmpty ? theme : subject
+        let seed = context.variationSeed ?? context.frameIndex
+        let plan = composer.framePlan(core: core, seed: seed, model: context.imageModel)
+        let frame = composer.promptFrame(core: core, seed: seed)
+        var lines = [
+            "主题：\(core)",
+            "光：\(frame.light)",
+            "看：\(frame.view)"
         ]
-        if composer.containsCJK(core) {
-            lines.append("The user wrote: \(core). Those characters are the subject name. Keep them in the output.")
+        let dialect = ImagePromptDialect.infer(from: context.imageModel)
+        if !essence.isEmpty, essence != subject {
+            lines.append("气味：\(essence)")
         }
-        if isFigure {
-            lines.append("The subject is a person. Keep the person in frame. Background stays secondary.")
-        } else if moodOnly {
-            let kind = composer.moodSightingKind(seed: context.variationSeed ?? context.frameIndex)
-            lines.append("The core is only a mood or season. This frame's visible thing is: \(kind).")
-            lines.append("Person, empty place, still life, and interior are all legal. Do not default to a woman. Do not default to an empty courtyard. No shops.")
-            if context.referenceImageCount > 0 {
-                lines.append("A reference image is attached. Copy light and space, not the previous subject category. If this frame is empty or still life, do not add a person just because the reference has one.")
+        if !include.isEmpty {
+            lines.append("还要看见：\(include)")
+        }
+        if !palette.isEmpty {
+            lines.append("颜色：\(palette)")
+        }
+        let alignedCombo = composer.alignVariationHint(context.dimensionCombo, to: plan)
+        if !alignedCombo.isEmpty {
+            let hint = dialect == .llada ? composer.shortVisualClause(alignedCombo) : alignedCombo
+            if !hint.isEmpty {
+                lines.append("这一张多看见：\(hint)")
             }
-        } else {
-            lines.append("Keep the given subject. It may be a place, person, animal, object, or anything else. Only add light, weather, time, and framing. Do not turn it into a landscape unless it already is one.")
         }
-        if !essence.isEmpty, essence != subject { lines.append("Mood leans \(composer.spokenHint(essence)).") }
-        if !include.isEmpty { lines.append("Also visible: \(composer.spokenHint(include)).") }
-        if !palette.isEmpty { lines.append("Color leans \(composer.spokenHint(palette)).") }
-        if !comboHint.isEmpty { lines.append("This frame differs by: \(comboHint).") }
+        switch context.emptySpace {
+        case "左侧留白": lines.append("左边松一点")
+        case "右侧留白": lines.append("右边松一点")
+        case "中央留白": lines.append("中间松一点")
+        default: break
+        }
         return lines.joined(separator: "\n")
     }
 
@@ -335,18 +346,23 @@ struct PromptAgent: Sendable {
         return String(value[start...end])
     }
 
-    static let systemPrompt = """
-    You rewrite a wallpaper idea into a short photograph prompt.
-    Keep the subject's name exactly as the user wrote it. Chinese names stay Chinese. Do not translate the name away.
-    The subject can be a place, person, animal, object, creature, interior, or anything else.
-    Do not swap it for a default landscape, courtyard, or another topic.
-    Write what is in front of the camera: the subject, light, and how it is framed. One or two sentences.
-    Camera language is welcome when it helps the shot: angle, mm, cinematic light.
-    If the core is only a mood or season with no subject, give this frame one visible thing: a person, an empty place, a still life, or an interior corner. Rotate across frames. Do not lock the series to portraits. Do not lock it to empty courtyards. No shops.
-    If the core is a person, keep the person. Do not turn it into an empty landscape.
-    Never mention signs, posters, newspapers, books, screens, captions, or the words "no text" / "没有文字".
-    Never list bans, labels, titles, or markdown. Output the photograph prompt and nothing else.
-    """
+    static var systemPrompt: String { systemPrompt(for: .generic) }
+
+    static func systemPrompt(for dialect: ImagePromptDialect) -> String {
+        switch dialect {
+        case .llada:
+            return """
+            只输出一句画面。
+            一张电影感照片，<主题原词>，<光>，<远近或质感>
+            中文专名原样留下。只写看得见的东西。
+            """
+        case .qwen, .generic:
+            return """
+            写成 1 到 3 句画面。
+            中文专名原样留下。只输出画面。
+            """
+        }
+    }
 
     static let blueprintSystemPrompt = """
     你是壁纸系列设计师。把用户的一句话想法拆成可长期生成变体的设计蓝图。

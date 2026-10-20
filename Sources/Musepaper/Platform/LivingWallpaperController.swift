@@ -23,6 +23,7 @@ enum LivingWallpaperStyle: String, Codable, CaseIterable, Identifiable, Sendable
     case sheen = "斜向扫光"
     case pulseDrift = "脉动漂移"
     case noirFlicker = "暗调微闪"
+    case wander = "随机游走"
 
     var id: String { rawValue }
 
@@ -63,6 +64,7 @@ enum PlaylistAtmosphere: String, Codable, CaseIterable, Identifiable, Sendable {
     case sheen = "斜向扫光"
     case pulseDrift = "脉动漂移"
     case noirFlicker = "暗调微闪"
+    case wander = "随机游走"
 
     var id: String { rawValue }
 
@@ -85,7 +87,7 @@ enum PlaylistAtmosphere: String, Codable, CaseIterable, Identifiable, Sendable {
 /// plus gentle pointer-reactive parallax when the cursor moves across a screen.
 /// A second instance with `role == .screensaver` reuses the same motions full-screen.
 @MainActor
-final class LivingWallpaperController {
+final class LivingWallpaperController: NSObject {
     enum Role {
         case desktop
         case screensaver
@@ -97,8 +99,11 @@ final class LivingWallpaperController {
     private var imageLayers: [CALayer] = []
     private var glowLayers: [CAGradientLayer] = []
     private var style: LivingWallpaperStyle = .kenBurns
+    private var requestedStyle: LivingWallpaperStyle = .kenBurns
     private var motionEnabled = true
+    private var appliedMotionKey = ""
     private var assignedPaths: [String: String] = [:]
+    private var lastShownPaths: [String: String] = [:]
     private var onDismiss: (() -> Void)?
     private var enabled = false
     private var screenSignature = ""
@@ -112,6 +117,7 @@ final class LivingWallpaperController {
 
     init(role: Role = .desktop) {
         self.role = role
+        super.init()
     }
 
     func update(
@@ -122,7 +128,11 @@ final class LivingWallpaperController {
         onDismiss: (() -> Void)? = nil
     ) {
         guard !Self.isRunningTests else { return }
-        self.style = style.resolvedMotion
+        let styleChanged = requestedStyle != style || self.motionEnabled != motionEnabled
+        requestedStyle = style
+        if styleChanged || appliedMotionKey.isEmpty {
+            self.style = style.resolvedMotion
+        }
         self.motionEnabled = motionEnabled
         self.assignedPaths = imagePathsByDisplay
         self.onDismiss = onDismiss
@@ -141,11 +151,15 @@ final class LivingWallpaperController {
             rebuild()
         } else {
             refreshImages()
-            restartMotion()
+            if styleChanged {
+                restartMotion()
+            }
         }
         if role == .desktop {
-            startPointerTracking()
-        } else {
+            if globalMouseMonitor == nil {
+                startPointerTracking()
+            }
+        } else if dismissMonitors.isEmpty {
             startDismissTracking()
         }
     }
@@ -165,6 +179,8 @@ final class LivingWallpaperController {
         hostLayers.removeAll()
         imageLayers.removeAll()
         glowLayers.removeAll()
+        appliedMotionKey = ""
+        lastShownPaths.removeAll()
         screenSignature = ""
     }
 
@@ -229,14 +245,7 @@ final class LivingWallpaperController {
             host.addSublayer(imageLayer)
 
             let glow = CAGradientLayer()
-            glow.colors = [
-                NSColor.clear.cgColor,
-                NSColor.white.withAlphaComponent(0.12).cgColor,
-                NSColor.clear.cgColor
-            ]
-            glow.startPoint = CGPoint(x: 0, y: 0.5)
-            glow.endPoint = CGPoint(x: 1, y: 0.5)
-            glow.frame = CGRect(x: -frame.width, y: 0, width: frame.width * 0.55, height: frame.height)
+            glow.frame = host.bounds
             glow.opacity = 0
             host.addSublayer(glow)
 
@@ -262,7 +271,19 @@ final class LivingWallpaperController {
 
     private func refreshImages() {
         for (index, screen) in NSScreen.screens.enumerated() where index < imageLayers.count {
-            imageLayers[index].contents = currentCGImage(on: screen)
+            let path = currentImagePath(on: screen) ?? ""
+            let changed = lastShownPaths["\(index)"] != path
+            lastShownPaths["\(index)"] = path
+            let image = path.isEmpty ? nil : cgImage(at: path)
+            let layer = imageLayers[index]
+            if changed, layer.contents != nil, image != nil {
+                let fade = CATransition()
+                fade.type = .fade
+                fade.duration = 0.55
+                fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                layer.add(fade, forKey: "living.crossfade")
+            }
+            layer.contents = image
         }
     }
 
@@ -285,13 +306,14 @@ final class LivingWallpaperController {
                 )
             }
         }
+        appliedMotionKey = motionEnabled ? style.rawValue : ""
         for host in hostLayers {
             host.removeAllAnimations()
             host.transform = CATransform3DIdentity
         }
     }
 
-    private var motionGain: CGFloat { role == .screensaver ? 1.75 : 1 }
+    private var motionGain: CGFloat { role == .screensaver ? 2.15 : 1.7 }
 
     // MARK: - Pointer feedback
 
@@ -301,12 +323,12 @@ final class LivingWallpaperController {
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.mouseMoved, .leftMouseDragged]
         ) { [weak self] _ in
-            Task { @MainActor in self?.handlePointerMove() }
+            Self.dispatchPointer { self?.handlePointerMove() }
         }
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(
             matching: [.mouseMoved, .leftMouseDragged]
         ) { [weak self] event in
-            Task { @MainActor in self?.handlePointerMove() }
+            Self.dispatchPointer { self?.handlePointerMove() }
             return event
         }
         handlePointerMove()
@@ -354,7 +376,7 @@ final class LivingWallpaperController {
             self?.settleAllPointers()
         }
         settleWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.35, execute: work)
     }
 
     private func applyPointerFeedback(
@@ -366,23 +388,17 @@ final class LivingWallpaperController {
     ) {
         guard index < hostLayers.count else { return }
         let host = hostLayers[index]
-        let maxShift = min(size.width, size.height) * 0.018
+        let boost = min(1.7, 0.85 + speed / 1800)
+        let maxShift = min(size.width, size.height) * 0.028 * boost
         let tx = nx * maxShift
         let ty = ny * maxShift
-        let boost = min(speed / 1800, 1)
-        let scale: CGFloat = 1.012 + boost * 0.02
 
         CATransaction.begin()
-        CATransaction.setAnimationDuration(0.28)
+        CATransaction.setAnimationDuration(0.18)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
-
         var transform = CATransform3DIdentity
-        transform.m34 = -1.0 / 1400
         transform = CATransform3DTranslate(transform, tx, ty, 0)
-        transform = CATransform3DRotate(transform, nx * -0.018, 0, 1, 0)
-        transform = CATransform3DRotate(transform, ny * 0.012, 1, 0, 0)
-        transform = CATransform3DRotate(transform, nx * -0.006, 0, 0, 1)
-        transform = CATransform3DScale(transform, scale, scale, 1)
+        transform = CATransform3DScale(transform, 1.018, 1.018, 1)
         host.transform = transform
         CATransaction.commit()
     }
@@ -396,27 +412,30 @@ final class LivingWallpaperController {
     private func settlePointer(on index: Int, animated: Bool) {
         guard index < hostLayers.count else { return }
         CATransaction.begin()
-        CATransaction.setAnimationDuration(animated ? 0.9 : 0)
-        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        CATransaction.setAnimationDuration(animated ? 0.7 : 0)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
         hostLayers[index].transform = CATransform3DIdentity
-        if index < imageLayers.count {
-            imageLayers[index].opacity = 1
-        }
         CATransaction.commit()
     }
 
 
-    private func currentCGImage(on screen: NSScreen) -> CGImage? {
+    private func currentImagePath(on screen: NSScreen) -> String? {
         if let id = DisplayService.displayID(for: screen),
            let path = assignedPaths[id],
-           let image = cgImage(at: path) {
-            return image
+           FileManager.default.fileExists(atPath: path) {
+            return path
         }
-        if role == .screensaver, let path = assignedPaths.values.first, let image = cgImage(at: path) {
-            return image
+        if role == .screensaver,
+           let path = assignedPaths.values.first,
+           FileManager.default.fileExists(atPath: path) {
+            return path
         }
-        guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
-        return cgImage(at: url.path)
+        return NSWorkspace.shared.desktopImageURL(for: screen)?.path
+    }
+
+    private func currentCGImage(on screen: NSScreen) -> CGImage? {
+        guard let path = currentImagePath(on: screen) else { return nil }
+        return cgImage(at: path)
     }
 
     private func cgImage(at path: String) -> CGImage? {
@@ -479,6 +498,16 @@ final class LivingWallpaperController {
 
     private static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    private static func dispatchPointer(_ work: @escaping @MainActor () -> Void) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { work() }
+        } else {
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { work() }
+            }
+        }
     }
 
     private final class BandWindow: NSWindow {
