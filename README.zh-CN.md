@@ -1,4 +1,11 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/sofunai-logo-dark.svg">
+  <img src="assets/brand/sofunai-logo-light.svg" alt="SofunAI 工作室" width="300" height="80">
+</picture>
+
 # Musepaper
+
+**由 [SofunAI 工作室](assets/brand/README.md)出品并维护。**
 
 [English](README.md) | **[简体中文](README.zh-CN.md)**
 
@@ -153,4 +160,4 @@ Provider 仿真使用模拟网络，不产生模型费用；验证本机凭据�
 
 ## 许可证
 
-源码采用 [MIT License](LICENSE)。第三方模型服务、素材、参考图片及生成内容的使用权取决于相应条款与权利人的授权。
+版权所有 © 2026 SofunAI 工作室及 Musepaper 贡献者。源码采用 [MIT License](LICENSE)。第三方模型服务、素材、参考图片及生成内容的使用权取决于相应条款与权利人的授权。

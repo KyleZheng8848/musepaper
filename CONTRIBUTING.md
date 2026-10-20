@@ -1,6 +1,6 @@
 # 参与贡献
 
-Musepaper 是 macOS 14+ 原生 SwiftUI / AppKit 应用。欢迎提交可复现的问题、文档改进和功能修复。
+Musepaper 由 SofunAI 工作室出品并维护，是 macOS 14+ 原生 SwiftUI / AppKit 应用。欢迎提交可复现的问题、文档改进和功能修复。
 
 ## 开发环境
 

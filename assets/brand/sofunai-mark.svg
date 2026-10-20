@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">SofunAI Studio mark</title>
+  <desc id="desc">An amber S ribbon on a midnight blue rounded square, with a small mint accent.</desc>
+  <rect x="8" y="8" width="112" height="112" rx="32" fill="#142235"/>
+  <path d="M85 37H61C46 37 37 43 37 53C37 63 46 69 61 69H67C82 69 91 75 91 85C91 95 82 101 67 101H43" fill="none" stroke="#F3B562" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M98 24L106 32L98 40L90 32Z" fill="#8AD5C1"/>
+</svg>

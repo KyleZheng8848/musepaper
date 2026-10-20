@@ -1,4 +1,11 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brand/sofunai-logo-dark.svg">
+  <img src="assets/brand/sofunai-logo-light.svg" alt="SofunAI Studio" width="300" height="80">
+</picture>
+
 # Musepaper
+
+**Published and maintained by [SofunAI Studio](assets/brand/README.md).**
 
 **[English](README.md)** | [简体中文](README.zh-CN.md)
 
@@ -155,4 +162,4 @@ Read the [contribution guide](CONTRIBUTING.md) (Simplified Chinese) before submi
 
 ## License
 
-The source code is available under the [MIT License](LICENSE). Rights to third-party model services, assets, reference images, and generated content depend on their respective terms and permissions.
+Copyright © 2026 SofunAI Studio and Musepaper contributors. The source code is available under the [MIT License](LICENSE). Rights to third-party model services, assets, reference images, and generated content depend on their respective terms and permissions.
