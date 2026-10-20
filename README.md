@@ -1,44 +1,46 @@
 # Musepaper
 
-Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“生成任务”，Agent 围绕主题探索或加强 Prompt，图片模型按批次产出候选；每张作品会获得多个 AI 标签，再由智能作品集筛选并交给轮播自动更换桌面。
+**[English](README.md)** | [简体中文](README.zh-CN.md)
 
-应用内置离线 Demo Renderer，也已接入 OpenAI Image API 与 OpenAI-compatible Provider。默认真实模型为 `gpt-image-2`，实际可用模型以你的服务商账户为准。API Key 保存在独立本机凭据文件中，不进入普通配置或 Git；文件权限固定为仅当前用户可读写的 `0600`。该文件为明文，请勿分享或提交。
+Documentation is available in English and Simplified Chinese. The app interface is currently primarily in Simplified Chinese; the setup instructions below include the Chinese control names for reference.
 
-## 功能
+Musepaper is a native macOS AI wallpaper app. Create recurring generation tasks, let a Prompt Agent explore a theme or refine your prompt, and generate batches of images. AI tags and smart collections organize the results, while wallpaper playlists rotate them on your desktop.
 
-- 临时创作 / 长期生成任务双模式
-- 任务可选择“主题探索 / 加强原 Prompt / 探索并加强”，分别控制同内核变化与忠实改写
-- 每个任务独立配置每日生成时间与 1–4 张候选数
-- 原生 macOS Musepaper 图标：深夜画布、纸张波浪与琥珀色生成火花
-- Agent / 大模型 API 负责主题拓展、Prompt 加强和作品多标签；文生图 API 只负责图片生成
-- 每张作品保留来源任务、生成 Prompt、收藏状态和多个语义标签
-- 智能作品集按任务、包含标签、排除标签和收藏状态动态筛选，不复制图片
-- 壁纸轮播可选择全部作品、某个任务或智能作品集作为来源，支持随机/最新/最早顺序
-- 离线 Demo Provider 与可插拔真实文生图 Provider
-- 多模型配置：OpenAI、OpenAI-compatible、自定义 Base URL
-- 独立 Prompt Agent：OpenAI Responses、OpenAI-compatible Chat、Anthropic Messages
-- Agent 可复用图片 Provider AK，也可使用独立凭据
-- GPT Image 2 文生图；参考图片自动切换到 Image Edits API
-- 本机 API Key 配置、连接测试和删除；代码不依赖 macOS Keychain
-- 每批 1–4 张候选；Provider 一次只返回 1 张时自动顺序补齐，并保留部分成功结果
-- 批次内明确选择、历史按批次展示；未选中时禁止应用
-- 生成状态机、失败提示和本地历史
-- 读取主屏幕尺寸，多屏一键替换
-- 覆盖屏幕的满幅应用策略，不用系统填充色补上下/左右边缘
-- 替换前记录旧壁纸并支持恢复
-- 每日任务使用日期种子扩展天气、时段和视角，锁定主题内核；结果自动进入作品库
-- 图片优先的作品画廊、AI 标签筛选、智能作品集与独立轮播页
+The app includes an offline Demo Renderer and supports the OpenAI Image API and compatible providers. The default image model is `gpt-image-2`; available models depend on your provider account. API keys are stored in a separate local credentials file with `0600` permissions, outside regular app settings and Git. This file stores keys in plain text: keep it private.
 
-## 要求
+## Features
 
-- macOS 14+
-- Swift 6 / Xcode 16+
+- One-off creation and recurring generation tasks
+- Three prompt strategies: explore a theme, refine the original prompt, or combine both
+- Per-task generation schedules and configurable batch sizes
+- Native macOS icon featuring a night canvas, paper waves, and an amber spark
+- A separate text-model API for theme exploration, prompt refinement, and artwork tagging; the image API handles image generation
+- Artwork records with their source task, generation prompt, favorites, and semantic tags
+- Smart collections filtered by task, included or excluded tags, and favorites, without duplicating image files
+- Wallpaper playlists sourced from all artwork, a task, or a smart collection, with shuffle, newest-first, and oldest-first ordering
+- An offline Demo Provider and pluggable image providers
+- Multiple model configurations with OpenAI, OpenAI-compatible services, and custom base URLs
+- An independent Prompt Agent supporting OpenAI Responses, OpenAI-compatible Chat, and Anthropic Messages
+- Shared or separate API keys for the image provider and Prompt Agent
+- GPT Image 2 generation, with reference images automatically routed to the Image Edits API
+- Local API key management, connection testing, and deletion, without macOS Keychain dependencies
+- Configurable batches, automatic completion when a provider returns one image per request, and preservation of partial results
+- Explicit candidate selection and batch history; applying a wallpaper requires a selection
+- Generation state tracking, error messages, and local history
+- Display resolution detection and wallpaper application across multiple displays
+- Full-bleed wallpapers without system fill bands at the edges
+- Previous wallpaper tracking and restoration
+- Date-seeded variations in weather, time of day, and viewpoint for daily tasks, with generated images added to the library
+- An image-focused gallery, AI tag filters, smart collections, and a dedicated playlist page
 
-## 运行
+## Requirements
 
-最简单的方式是构建标准 macOS 应用包：
+- macOS 14 or later
+- Swift 6 / Xcode 16 or later
 
-克隆仓库并构建：
+## Getting started
+
+Build a standard macOS application bundle:
 
 ```bash
 git clone https://github.com/KyleZheng8848/musepaper.git
@@ -47,106 +49,110 @@ cd musepaper
 open dist/Musepaper.app
 ```
 
-生成后也可以直接在 Finder 中双击 `dist/Musepaper.app`。应用采用本地临时签名；首次打开若被系统拦截，请在 Finder 中右键应用并选择“打开”。
+You can also open `dist/Musepaper.app` from Finder. The build uses ad hoc signing. If macOS blocks the first launch, right-click the app in Finder and choose **Open**.
 
-发版形态为版本化 DMG/ZIP + `latest.json` +「安装并打开」，**默认 arm64 + Intel x64**：
+Release packaging produces versioned DMG/ZIP files, `latest.json`, and an installation launcher. **Both Apple Silicon (`arm64`) and Intel (`x64`) are built by default.**
 
 ```bash
 ./scripts/check-version-sync.sh
 ./scripts/package-release.sh
 ./scripts/verify-surface.sh
-# 产物：release/Musepaper-<版本>-arm64|x64.dmg|.zip
-# 安装：打开对应芯片的 DMG → 双击「安装并打开.command」
+# Output: release/Musepaper-<version>-arm64|x64.dmg|.zip
+# Open the DMG for your Mac, then run 安装并打开.command inside it.
 ```
 
-升版示例：`./scripts/bump-version.sh 0.6.0 "要点一|要点二"`（替换为本次目标版本）。完整流程见 [docs/RELEASING.md](docs/RELEASING.md)。
+Example version bump: `./scripts/bump-version.sh 0.6.0 "Highlight one|Highlight two"`. Replace the version and highlights for your release. See the [release guide](docs/RELEASING.md) (Simplified Chinese) for the full process.
 
-本机壁纸包（图 + Prompt + 标签 + 系列）上传 OSS 见 [docs/WALLPAPER_PACKS.md](docs/WALLPAPER_PACKS.md)：
+Local wallpaper packs include images, prompts, tags, and series metadata. See the [wallpaper pack guide](docs/WALLPAPER_PACKS.md) (Simplified Chinese) for OSS publishing:
 
 ```bash
 ./scripts/publish-wallpaper-pack.sh --series 孤独宇宙 --limit 50
 ```
 
-安装了完整 Xcode 时，也可以使用 SwiftPM：
+Replace `孤独宇宙` with the name of a series in your local library.
+
+With a full Xcode installation, you can also run the app through SwiftPM from the repository root:
 
 ```bash
 swift run Musepaper
 ```
 
-首次编译可能需要数十秒。生成的演示壁纸保存在 `~/Pictures/Musepaper/`，应用状态保存在 `~/Library/Application Support/Musepaper/snapshot.json`。
+The initial build may take a while. Demo wallpapers are saved in `~/Pictures/Musepaper/`. App state is stored in `~/Library/Application Support/Musepaper/snapshot.json`.
 
-## 配置真实模型
+## Configure an image model
 
-1. 首次打开时，点击侧栏底部“设置”。
-2. 选择默认的“OpenAI · GPT Image 2”，或新增 OpenAI-compatible 配置。
-3. OpenAI 默认 Base URL 为 `https://api.openai.com/v1`，模型为 `gpt-image-2`。
-4. 填写 API Key，选择尺寸、质量、格式和超时。候选数由本次创作或壁纸系列决定，不依赖图片服务是否支持批量参数。
-5. 点击“保存并测试连接”。Musepaper 会先把 AK/SK 写入普通本机配置 `~/Library/Application Support/Musepaper/credentials.json`（权限 `0600`），再验证模型端点；程序不链接或访问 macOS Keychain。也可以只保存配置、稍后测试。
-6. 回到“生成任务”，选择临时创作或一个长期任务并填写本次要求。
-7. 点击“生成 N 张”；在结果中比较候选。可立即设为壁纸，也可让作品进入作品库供筛选和轮播使用。
+1. Open Settings (`设置`) at the bottom of the sidebar.
+2. Select the default `OpenAI · GPT Image 2` configuration or add an OpenAI-compatible provider.
+3. The default OpenAI base URL is `https://api.openai.com/v1`, with model `gpt-image-2`.
+4. Enter your API key and choose the output size, quality, format, and timeout. The creation task determines the candidate count independently of the provider's batch support.
+5. Click Save and Test Connection (`保存并测试连接`). Musepaper first saves the key to `~/Library/Application Support/Musepaper/credentials.json` with `0600` permissions, then checks the model endpoint. It does not access macOS Keychain. You can also save the configuration and test it later.
+6. Return to Generation Tasks (`生成任务`), select one-off creation or a recurring task, and enter your prompt.
+7. Click Generate N Images (`生成 N 张`) and compare the candidates. Set a result as your wallpaper or keep it in the library for collections and playlists.
 
-创作页会持续显示当前 Provider、模型、输出尺寸、AK 状态和连接验证结果；没有可用密钥时不会误发生成请求。顶部“目标显示器”可切换屏幕，生成结果会自动裁切为该屏幕的实际分辨率。
+The creation page shows the active provider, model, output size, key status, and connection-test result. Generation requests require an available key. Use Target Display (`目标显示器`) at the top to choose a screen; results are cropped to its actual resolution.
 
-## 配置 Agent / 大模型 API
+## Configure the Prompt Agent
 
-1. 打开“设置 → Agent 与大模型 API”，打开启用开关。
-2. OpenAI 配置为 Base URL `https://api.openai.com/v1`、协议 `OpenAI Responses`；文本模型请填写服务商账户实际支持的模型 ID。
-3. 使用相同 Provider 时可点击“复用图片模型 AK”；也可以单独填写 AK。
-4. 兼容服务可选择 `OpenAI-compatible Chat`；Anthropic 服务选择 `Anthropic Messages`。
-5. 点击“保存并测试”。此后 Agent 会在生成任务中按所选策略拓展主题或加强 Prompt，并在图片生成后为每张作品生成多个标签。
+1. Open Settings → Agent and Model API (`设置 → Agent 与大模型 API`) and enable it.
+2. For OpenAI, use base URL `https://api.openai.com/v1` and the `OpenAI Responses` protocol. Enter a text-model ID available to your provider account.
+3. To share credentials with the image provider, click Reuse Image Model Key (`复用图片模型 AK`), or enter a separate key.
+4. For compatible services, choose `OpenAI-compatible Chat`; for Anthropic, choose `Anthropic Messages`.
+5. Click Save and Test (`保存并测试`). The Agent then explores themes or refines prompts according to each task's strategy and adds semantic tags after image generation.
 
-Musepaper 不会在键入时请求模型。未启用 Agent 或文本服务暂时失败时，内置规则仍能完成 Prompt 变化与基础多标签，不阻塞图片生成。
+Musepaper does not call models while you type. When the Agent is disabled or the text service fails, built-in rules still provide prompt variation and basic tags so image generation can proceed.
 
-## 推荐创作流程
+## Suggested workflow
 
-1. 在“生成任务”中新建任务，例如“潮湿、安静、有巨大空间感的未来上海”。
-2. 选择 Prompt 策略：想保持主题内核并持续出现不同天气、时段和镜头时选“主题探索”；已有精确 Prompt 时选“加强原 Prompt”。
-3. 选择每次生成张数；需要长期供图时，开启该任务的每日定时。
-4. 生成后到“作品”页按 AI 标签浏览。可组合任务、标签、排除标签与收藏状态，保存为智能作品集。
-5. 到“轮播”页新建播放方案，来源选择任务或智能作品集，再设置随机/时间顺序和更换间隔。
-6. “立即下一张”可当场验证来源；启用后，Musepaper 运行期间会按间隔循环应用符合条件的作品。
+1. Create a generation task, such as “a damp, quiet, futuristic Shanghai with a vast sense of space.”
+2. Choose a prompt strategy. Theme Exploration (`主题探索`) varies weather, time, and viewpoint while preserving the theme; Refine Original Prompt (`加强原 Prompt`) is useful for a more precise starting prompt.
+3. Set the batch size and enable the task's daily schedule if you want a recurring supply of images.
+4. Browse AI tags on the Artwork (`作品`) page. Combine task, tag, exclusion, and favorite filters into a smart collection.
+5. Create a plan on the Playlists (`轮播`) page, select a task or smart collection as the source, and set the order and interval.
+6. Use Next Now (`立即下一张`) to try the source. Once enabled, the playlist rotates matching artwork while Musepaper is running.
 
-远程自定义 Provider 强制使用 HTTPS；本机 `localhost`/`127.0.0.1` 服务可以使用 HTTP。GPT Image 账户可能需要先完成组织验证，详见 [OpenAI Image generation guide](https://developers.openai.com/api/docs/guides/image-generation)。
+Remote providers require HTTPS. Local services at `localhost` or `127.0.0.1` may use HTTP. GPT Image accounts may require organization verification; see the [OpenAI image generation guide](https://developers.openai.com/api/docs/guides/image-generation).
 
-## 测试
+## Testing
 
 ```bash
 swift test
 ```
 
-也可以绕过 SwiftPM 执行 Provider 仿真（支持 Apple Silicon 和 Intel Mac）：
+You can also run the provider smoke checks without SwiftPM on either Apple Silicon or Intel:
 
 ```bash
 ./scripts/run-smoke.sh
 ```
 
-Provider 仿真使用模拟网络，不产生模型费用；验证本机凭据读写与 `0600` 权限、生成/参考图编辑请求、鉴权、Base64、文件写入及屏幕适配。
+The provider smoke checks use mocked network responses and do not incur model API charges. They cover local credential storage and `0600` permissions, generation and reference-image edit requests, authentication, Base64 decoding, file output, and display adaptation.
 
-`./scripts/run-batch-smoke.sh` 还会运行完整 UI 状态流程并调用系统壁纸设置，适合在单独的 macOS 测试账户中手动执行，不包含在默认 CI 中。
+`./scripts/run-batch-smoke.sh` exercises the full UI state flow and calls the system wallpaper setter. Run it manually in a separate macOS test account. It is excluded from the default CI workflow.
 
-如果出现 `Undefined symbols ... PackageDescription.Package`，请检查当前选中的 Command Line Tools 与 Swift 驱动版本是否匹配。安装完整 Xcode 后运行 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`，再执行测试。
+If you encounter `Undefined symbols ... PackageDescription.Package`, check that the selected Command Line Tools and Swift driver versions match. After installing full Xcode, select it with `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` and rerun the tests.
 
-若 `swift test` 提示 `no such module 'XCTest'`，也请安装并选用完整 Xcode；只有 Command Line Tools 时仍可用 `swift build` 编译和运行 Provider 仿真。
+If `swift test` reports `no such module 'XCTest'`, install and select full Xcode. With Command Line Tools alone, you can still compile using `swift build` and run the provider smoke checks.
 
-## 接入其他文生图服务
+## Add another image provider
 
-兼容 OpenAI Image API 的服务可直接在界面中配置。其他协议则在 `Sources/Musepaper/Providers/` 新建实现 `ImageProvider` 的类型；网络请求应在 Provider 内完成，AK 必须通过 `CredentialStore` 按需读取。Provider 输出本地图片 URL 数组，后续适配、历史和壁纸流程无需变化。
+Services compatible with the OpenAI Image API can be configured in the app. For another protocol, implement `ImageProvider` in `Sources/Musepaper/Providers/`. Keep network requests inside the provider and read API keys through `CredentialStore` as needed. Providers return local image URLs, which feed into the existing adaptation, history, and wallpaper pipeline.
 
-## 安全默认值
+## Safe defaults
 
-生成任务的定时默认关闭；轮播默认关闭。定时生成只把作品加入作品库，不会直接覆盖桌面；只有用户明确启用的轮播会按来源更换壁纸。壁纸设置失败不会清空上一张壁纸路径。AK 文件位于 `~/Library/Application Support/Musepaper/credentials.json`，目录权限为 `0700`、文件权限为 `0600`；它与普通状态文件 `snapshot.json` 分离。
+Generation schedules and wallpaper playlists are off by default. Scheduled generation adds artwork to the library without directly replacing the desktop. Only explicitly enabled playlists change wallpapers on an interval. A failed wallpaper change does not clear the previous wallpaper path.
 
-## 网络与数据
+API keys are stored in `~/Library/Application Support/Musepaper/credentials.json`, with `0700` directory permissions and `0600` file permissions, separately from `snapshot.json`.
 
-- 图片生成和 Prompt Agent 会把本次 Prompt、参考图片或作品图发送到你配置的模型服务商；真实 API 调用可能产生费用。
-- 桌面天气功能使用 Open-Meteo 查询天气与城市；自动定位可能调用系统定位服务及太平洋电脑网、GeoJS 的 IP 定位接口。需要控制位置数据时，请检查天气与定位设置。
-- 应用会向内置的维护者 OSS 更新源请求 `latest.json`，只提示新版本并引导下载。自行分发时请修改 `UpdateManifestConfig.defaultManifestURL` 以及 `StudioViewModel` 中的下载页地址。
-- OSS 发布脚本为可选维护工具，不是编译或离线 Demo 的前置条件。自行发布请使用自己的存储桶和凭据，详见 [发版文档](docs/RELEASING.md)。
+## Network and data
 
-## 参与贡献
+- Image generation and the Prompt Agent send the relevant prompts, reference images, or artwork to your configured model provider. Real API calls may incur charges.
+- Desktop weather uses Open-Meteo for forecasts and city searches. Automatic location may use macOS Location Services and IP-location endpoints from PConline and GeoJS. Review the weather and location settings to control location data.
+- The app requests `latest.json` from the maintainer's built-in OSS update source to notify you of new versions and guide downloads. For your own distribution, change `UpdateManifestConfig.defaultManifestURL` and the download-page URL in `StudioViewModel`.
+- OSS publishing scripts are optional maintainer tools. Building the app and using the offline Demo do not require OSS. Use your own bucket and credentials when publishing; see the [release guide](docs/RELEASING.md) (Simplified Chinese).
 
-提交问题和改动前请阅读 [贡献指南](CONTRIBUTING.md)。报告安全问题请阅读 [安全说明](SECURITY.md)，不要公开上传 API Key、个人作品库或未脱敏的日志。
+## Contributing
 
-## 许可证
+Read the [contribution guide](CONTRIBUTING.md) (Simplified Chinese) before submitting issues or changes. For security reports, follow the [security policy](SECURITY.md) (Simplified Chinese). Keep API keys, personal artwork libraries, and unredacted logs private. When changing setup, features, or data-handling instructions, update both the English and Simplified Chinese READMEs.
 
-源码采用 [MIT License](LICENSE)。第三方模型服务、素材、参考图片及生成内容的使用权取决于相应条款与权利人的授权。
+## License
+
+The source code is available under the [MIT License](LICENSE). Rights to third-party model services, assets, reference images, and generated content depend on their respective terms and permissions.
