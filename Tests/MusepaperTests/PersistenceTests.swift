@@ -189,11 +189,11 @@ final class PersistenceTests: XCTestCase {
             WallpaperPlaylist.ownedDisplayIDs(for: high, among: [low, high], available: available),
             available
         )
-        XCTAssertEqual(high.priorityCaption(among: [low, high]), "第 1 优先")
+        XCTAssertEqual(high.priorityCaption(among: [low, high]), L10n.tr("第 \(1) 优先"))
         XCTAssertEqual(low.ownershipCaption(among: [low, high], displays: [
             DisplayProfile(id: "screen-0", name: "内屏", width: 1800, height: 1169, scale: 2),
             DisplayProfile(id: "screen-1", name: "外屏", width: 1920, height: 1080, scale: 1)
-        ]), "重叠的屏正由「工作」换")
+        ]), L10n.tr("重叠的屏正由「\("工作")」换"))
     }
 
     func testPlaylistPriorityRoundTrip() async throws {
@@ -203,7 +203,7 @@ final class PersistenceTests: XCTestCase {
         let store = JSONStore(fileURL: url)
         var snapshot = AppSnapshot()
         snapshot.playlists = [
-            WallpaperPlaylist(name: "工作", applyToDesktop: false, applyToScreensaver: true, priority: 8)
+            WallpaperPlaylist(name: "工作", priority: 8, applyToDesktop: false, applyToScreensaver: true)
         ]
         try await store.save(snapshot)
         let loaded = try await store.load()
