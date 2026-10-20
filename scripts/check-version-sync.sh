@@ -31,7 +31,7 @@ else
   ok "Info.plist = $VERSION"
 fi
 
-CHANGELOG_HEAD="$(rg -N '^##\s+' CHANGELOG.md | head -1 || true)"
+CHANGELOG_HEAD="$(awk '/^##[[:space:]]+/ { print; exit }' CHANGELOG.md)"
 if [[ ! "$CHANGELOG_HEAD" =~ ^##[[:space:]]+([0-9]+\.[0-9]+\.[0-9]+)[[:space:]]+[—–-][[:space:]]+([0-9]{4}-[0-9]{2}-[0-9]{2}) ]]; then
   fail "CHANGELOG.md 首条须为「## x.y.z — YYYY-MM-DD」"
 else
