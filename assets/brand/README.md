@@ -25,6 +25,10 @@ Use the same studio logo as the publisher endorsement across products. Each prod
 
 各产品使用同一工作室标识作为出品署名，并保留各自的名称、应用图标与强调色。核心 logo 保持平面矢量的清晰度；通透、光学材质可用于展示环境与辅助图形。
 
+The studio logo and its preview contain only the SofunAI Studio identity. Project names belong in each project's title and About information, outside the logo. Each open-source project should show the publisher in its README and, when it has an application interface, its About screen.
+
+工作室 logo 及其预览仅展示 SofunAI 标识。项目名称放在各自标题与关于信息中，独立于 logo。每个开源项目的 README 都要标注工作室；有应用界面的项目还应在关于页显示 logo、工作室署名与项目链接。
+
 These assets are included under the repository's [MIT License](../../LICENSE).
 
 素材采用仓库的 [MIT 许可证](../../LICENSE)。

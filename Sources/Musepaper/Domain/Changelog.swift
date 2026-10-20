@@ -10,13 +10,12 @@ struct ChangelogEntry: Identifiable, Equatable, Sendable {
 
 enum AppChangelog {
     static let entries: [ChangelogEntry] = [
-                                                                                                                                                                                                                                                                                                                                                                                ChangelogEntry(
-            version: "0.5.39",
-            date: "2026-08-28",
+                                                                                                                                                                                                                                                                                                                                                                                        ChangelogEntry(
+            version: "0.5.40",
+            date: "2026-10-20",
             highlights: [
-                "心情句按看见什么轮换：人、空场、静物、室内",
-                "Agent 补人不再把系列改成人物题",
-                "参考图不再逼下一张继续长人"
+                "SofunAI 工作室出品标识与原生矢量 logo",
+                "新增独立关于窗口、应用菜单入口和开源主页链接"
             ]
         )
     ]

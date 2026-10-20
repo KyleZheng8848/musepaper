@@ -7,6 +7,11 @@ struct MusepaperApp: App {
 
     var body: some Scene {
         Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appInfo) {
+                    Button("关于 Musepaper") { appDelegate.showAboutWindow() }
+                }
+            }
     }
 }
 
@@ -16,6 +21,30 @@ struct MusepaperApp: App {
 @MainActor
 final class MusepaperAppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    private var aboutWindow: NSWindow?
+
+    func showAboutWindow() {
+        if let aboutWindow {
+            aboutWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let aboutWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 320),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        aboutWindow.title = "关于 Musepaper"
+        aboutWindow.isReleasedWhenClosed = false
+        aboutWindow.contentView = NSHostingView(rootView: MusepaperAboutView { [weak self] in
+            self?.aboutWindow?.close()
+        })
+        aboutWindow.center()
+        self.aboutWindow = aboutWindow
+        aboutWindow.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NotificationCenter.default.addObserver(

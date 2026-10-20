@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5.39</string>
+	<string>0.5.40</string>
 	<key>CFBundleVersion</key>
 	<string>6</string>
 	<key>LSMinimumSystemVersion</key>
@@ -29,6 +29,8 @@
 	</dict>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 SofunAI Studio and Musepaper contributors</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Musepaper 用当前位置显示桌面天气与温度，不会用于其它用途。</string>
 	<key>NSLocationAlwaysUsageDescription</key>

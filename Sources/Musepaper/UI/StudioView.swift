@@ -1583,6 +1583,13 @@ struct StudioView: View {
 
     private var versionCard: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Text("关于 Musepaper").font(.headline).foregroundStyle(MuseTheme.ink)
+            SofunAIPublisherView()
+                .foregroundStyle(MuseTheme.ink)
+            Link("GitHub 开源主页", destination: AppIdentity.repositoryURL)
+                .font(.caption)
+                .foregroundStyle(MuseTheme.amber)
+            Divider().overlay(MuseTheme.border)
             Text("当前版本").font(.headline).foregroundStyle(MuseTheme.ink)
             Text(AppVersion.display)
                 .font(.system(size: 22, weight: .medium, design: .monospaced))

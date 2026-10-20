@@ -7,6 +7,8 @@
 
 **由 [SofunAI 工作室](assets/brand/README.md)出品并维护。**
 
+应用菜单中的 **Musepaper → 关于 Musepaper** 与 **设置 → 关于 Musepaper** 均展示工作室标识和开源主页链接。
+
 [English](README.md) | **[简体中文](README.zh-CN.md)**
 
 文档提供英文与简体中文版本。应用界面目前主要使用简体中文。

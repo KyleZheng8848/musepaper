@@ -7,6 +7,8 @@
 
 **Published and maintained by [SofunAI Studio](assets/brand/README.md).**
 
+The studio logo is also shown in **Musepaper → About Musepaper** (`关于 Musepaper`) and the About section of Settings (`设置`).
+
 **[English](README.md)** | [简体中文](README.zh-CN.md)
 
 Documentation is available in English and Simplified Chinese. The app interface is currently primarily in Simplified Chinese; the setup instructions below include the Chinese control names for reference.
