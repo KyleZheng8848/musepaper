@@ -7,7 +7,7 @@
 
 **Published and maintained by [SofunAI Studio](assets/brand/README.md).**
 
-**[GitHub repository](https://github.com/KyleZheng8848/musepaper)**
+**[GitHub repository](https://github.com/KyleZheng8848/musepaper)** · **[Releases](https://github.com/KyleZheng8848/musepaper/releases)** · **[Download latest](https://github.com/KyleZheng8848/musepaper/releases/latest)**
 
 The studio logo is also shown in **Musepaper → About Musepaper** (`关于 Musepaper`) and the About section of Settings (`设置`).
 
@@ -44,9 +44,9 @@ The app includes an offline Demo Renderer and supports the OpenAI Image API and 
 - Date-seeded variations in weather, time of day, and viewpoint for daily tasks, with generated images added to the library
 - An image-focused gallery, AI tag filters, smart collections, and a dedicated playlist page
 
-## Download the macOS app
+## Releases · Download the macOS app
 
-[All releases](https://github.com/KyleZheng8848/musepaper/releases) · **0.5.63**
+[Releases](https://github.com/KyleZheng8848/musepaper/releases) · **[0.5.63](https://github.com/KyleZheng8848/musepaper/releases/tag/v0.5.63)**
 
 - [Apple Silicon (M-series) — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-arm64.dmg)
 - [Intel — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)

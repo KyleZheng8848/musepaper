@@ -7,7 +7,7 @@
 
 **由 [SofunAI 工作室](assets/brand/README.md)出品并维护。**
 
-**[GitHub 仓库](https://github.com/KyleZheng8848/musepaper)**
+**[GitHub 仓库](https://github.com/KyleZheng8848/musepaper)** · **[Releases](https://github.com/KyleZheng8848/musepaper/releases)** · **[下载最新版](https://github.com/KyleZheng8848/musepaper/releases/latest)**
 
 应用菜单中的 **Musepaper → 关于 Musepaper** 与 **设置 → 关于 Musepaper** 均展示工作室标识和开源主页链接。
 
@@ -44,9 +44,9 @@ Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“
 - 每日任务使用日期种子扩展天气、时段和视角，锁定主题内核；结果自动进入作品库
 - 图片优先的作品画廊、AI 标签筛选、智能作品集与独立轮播页
 
-## 下载 macOS 应用
+## Releases · 下载 macOS 应用
 
-[全部版本](https://github.com/KyleZheng8848/musepaper/releases) · **0.5.63**
+[Releases](https://github.com/KyleZheng8848/musepaper/releases) · **[0.5.63](https://github.com/KyleZheng8848/musepaper/releases/tag/v0.5.63)**
 
 - [Apple Silicon（M 系列芯片）— DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-arm64.dmg)
 - [Intel 芯片 — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)
