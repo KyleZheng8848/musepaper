@@ -71,3 +71,8 @@ macOS 用户打开对应芯片的 DMG 后请双击 **「安装并打开.command�
 ```
 
 源码版本、`release/latest.json`、版本化 dmg/zip、OSS 公开面、本机 `/Applications`（可选跳过）必须同版本；不过禁止宣称「已更新」。
+
+
+## GitHub macOS Release
+
+Run **Actions → Publish macOS apps → Run workflow** on the reviewed commit. The workflow builds natively on Apple Silicon and Intel, verifies the application and both archives, then creates a new `v<version>` tag and GitHub Release with DMG, ZIP and SHA256 checksums. It refuses to overwrite an existing tag. After publication it downloads every installer anonymously and verifies its checksum. This workflow does not publish to OSS or install an app locally. Windows/Linux package targets remain available for local development and are not part of this macOS release workflow.

@@ -44,6 +44,15 @@ The app includes an offline Demo Renderer and supports the OpenAI Image API and 
 - Date-seeded variations in weather, time of day, and viewpoint for daily tasks, with generated images added to the library
 - An image-focused gallery, AI tag filters, smart collections, and a dedicated playlist page
 
+## Download the macOS app
+
+[All releases](https://github.com/KyleZheng8848/musepaper/releases) · **0.5.63**
+
+- [Apple Silicon (M-series) — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-arm64.dmg)
+- [Intel — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)
+
+ZIP alternatives and `SHA256SUMS.txt` are available on the release page. The apps use ad hoc signing and are not notarized by Apple. Open the DMG and run `安装并打开.command` to install and launch.
+
 ## Requirements
 
 - macOS 14 or later

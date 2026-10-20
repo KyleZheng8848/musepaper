@@ -44,6 +44,15 @@ Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“
 - 每日任务使用日期种子扩展天气、时段和视角，锁定主题内核；结果自动进入作品库
 - 图片优先的作品画廊、AI 标签筛选、智能作品集与独立轮播页
 
+## 下载 macOS 应用
+
+[全部版本](https://github.com/KyleZheng8848/musepaper/releases) · **0.5.63**
+
+- [Apple Silicon（M 系列芯片）— DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-arm64.dmg)
+- [Intel 芯片 — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)
+
+Release 页面同时提供 ZIP 和 `SHA256SUMS.txt` 校验文件。应用采用临时签名，尚未经过 Apple 公证。打开 DMG 后，运行其中的「安装并打开.command」完成安装与启动。
+
 ## 要求
 
 - macOS 14+
