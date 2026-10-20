@@ -58,6 +58,10 @@ struct IntegrationSmoke {
             expect(Set(prompts).count == prompts.count, "Give each candidate a distinct scene")
             expect(prompts.allSatisfy { !$0.contains("This frame differs") && !composer.containsInstructionLeak($0) }, "Image prompts contain scenes, not drafting instructions")
         }
+        let dirty = composer.finishAgentPrompt("主题：晶石\nThis frame differs by dusk\n黑板上写着qwennewbee", core: "晶石", seed: 2, model: "LLaDA-Image")
+        expect(dirty.contains("晶石") && !dirty.localizedCaseInsensitiveContains("qwennewbee"), "Discard unrequested lettering before stripping its cues")
+        let aerial = composer.imageModelPrompt("马尔代夫，Those characters are the subject name. Keep them in the output. volumetric fog", core: "马尔代夫", seed: 2, model: "LLaDA-Image")
+        expect(aerial.contains("马尔代夫") && !aerial.localizedCaseInsensitiveContains("are the") && !aerial.localizedCaseInsensitiveContains("volumetric fog"), "Remove whole instruction clauses without losing the subject")
         let ping = LivingMotion.pingPong("transform.scale", from: 1, to: 1.08, period: 16)
         let values = (ping.values ?? []).compactMap { ($0 as? NSNumber)?.doubleValue }
         expect(values.first == values.last, "Ambient motion loops continuously")

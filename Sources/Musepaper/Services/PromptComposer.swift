@@ -85,7 +85,7 @@ struct PromptComposer: Sendable {
     func imageModelPrompt(_ scene: String, core: String = "", seed: Int = 0, model: String = "") -> String {
         let dialect = ImagePromptDialect.infer(from: model)
         let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
-        let incoming = scene.trimmingCharacters(in: .whitespacesAndNewlines)
+        let incoming = sanitizeVisibleArtwork(scene.trimmingCharacters(in: .whitespacesAndNewlines), core: locked, dialect: dialect)
         var body = groundIfNeeded(incoming.isEmpty ? locked : incoming, core: locked, seed: seed)
         if dialect == .llada {
             return lladaImageScene(core: locked, seed: seed, scene: incoming)
@@ -118,7 +118,7 @@ struct PromptComposer: Sendable {
         if dialect == .llada {
             return lladaImageScene(core: core, seed: seed, scene: scene)
         }
-        var body = neutralizeSignLettering(stripInstructionEcho(enforcePureArtwork(scene)), core: core)
+        var body = sanitizeVisibleArtwork(scene, core: core, dialect: dialect)
         body = groundIfNeeded(body, core: core, seed: seed)
         body = pinCore(core, onto: body)
         body = stripInstructionEcho(body)
@@ -133,12 +133,7 @@ struct PromptComposer: Sendable {
 
     func lladaImageScene(core: String, seed: Int = 0, scene: String = "") -> String {
         let locked = usableVisual(core) ?? sanitizeVisualPrompt(core)
-        let incoming = stripInstructionEcho(
-            neutralizeSignLettering(
-                stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: locked),
-                core: locked
-            )
-        )
+        let incoming = sanitizeVisibleArtwork(scene, core: locked, dialect: .llada)
         if usableLladaAgentBody(incoming, core: locked) {
             var body = incoming
             if !locked.isEmpty, !body.contains(locked) {
@@ -400,7 +395,10 @@ struct PromptComposer: Sendable {
     }
 
     private func sanitizeVisibleArtwork(_ scene: String, core: String, dialect: ImagePromptDialect) -> String {
-        var text = neutralizeSignLettering(stripUnrequestedGlyphCarriers(enforcePureArtwork(scene), core: core), core: core)
+        // Keep the cues (e.g. “写着” and “Those characters”) until their whole
+        // clauses are removed; generic sanitization otherwise leaves orphaned words.
+        let described = neutralizeSignLettering(stripInstructionEcho(scene), core: core)
+        var text = enforcePureArtwork(stripUnrequestedGlyphCarriers(described, core: core))
         if dialect == .llada {
             text = stripUnrequestedGloom(text, core: core)
         }
