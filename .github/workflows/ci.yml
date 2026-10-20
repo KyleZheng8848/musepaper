@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: swift --version
+      - name: Version consistency
+        run: ./scripts/check-version-sync.sh
+      - name: Publishing credential isolation
+        run: python3 -m unittest discover -s Tests/Publishing -v
+      - name: Unit tests
+        run: swift test
+      - name: Provider smoke test
+        run: ./scripts/run-smoke.sh

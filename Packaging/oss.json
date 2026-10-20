@@ -1,0 +1,7 @@
+{
+  "ossTarget": "oss://sometimesgood/Musepaper/",
+  "ossEndpoint": "oss-cn-hangzhou-zmf.aliyuncs.com",
+  "downloadBaseUrl": "https://sometimesgood.oss-cn-hangzhou-zmf.aliyuncs.com/Musepaper/",
+  "packsPrefix": "packs/",
+  "keepPacks": 30
+}
