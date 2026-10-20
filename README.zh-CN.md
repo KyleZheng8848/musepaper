@@ -7,6 +7,8 @@
 
 **由 [SofunAI 工作室](assets/brand/README.md)出品并维护。**
 
+**[GitHub 仓库](https://github.com/KyleZheng8848/musepaper)**
+
 应用菜单中的 **Musepaper → 关于 Musepaper** 与 **设置 → 关于 Musepaper** 均展示工作室标识和开源主页链接。
 
 [English](README.md) | **[简体中文](README.zh-CN.md)**

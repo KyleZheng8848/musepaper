@@ -7,6 +7,8 @@
 
 **Published and maintained by [SofunAI Studio](assets/brand/README.md).**
 
+**[GitHub repository](https://github.com/KyleZheng8848/musepaper)**
+
 The studio logo is also shown in **Musepaper → About Musepaper** (`关于 Musepaper`) and the About section of Settings (`设置`).
 
 **[English](README.md)** | [简体中文](README.zh-CN.md)
