@@ -39,9 +39,13 @@ final class CredentialStoreTests: XCTestCase {
 
         let reclaimed = try await store.reclaimOrphanedSecrets(for: [newImage, newPrompt])
         XCTAssertEqual(reclaimed, 2)
-        XCTAssertEqual(try await store.read(for: newImage), "shared-secret")
-        XCTAssertEqual(try await store.read(for: newPrompt), "shared-secret")
-        XCTAssertTrue(await store.contains(newImage))
-        XCTAssertTrue(await store.contains(newPrompt))
+        let imageSecret = try await store.read(for: newImage)
+        let promptSecret = try await store.read(for: newPrompt)
+        let containsImage = await store.contains(newImage)
+        let containsPrompt = await store.contains(newPrompt)
+        XCTAssertEqual(imageSecret, "shared-secret")
+        XCTAssertEqual(promptSecret, "shared-secret")
+        XCTAssertTrue(containsImage)
+        XCTAssertTrue(containsPrompt)
     }
 }

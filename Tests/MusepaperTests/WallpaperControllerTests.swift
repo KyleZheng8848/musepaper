@@ -2,11 +2,12 @@ import AppKit
 import XCTest
 @testable import Musepaper
 
+@MainActor
 final class WallpaperControllerTests: XCTestCase {
     func testWallpaperUsesFullBleedScaling() {
         XCTAssertEqual(
             WallpaperController.fillOptions[.imageScaling] as? Int,
-            NSImageScaling.scaleAxesIndependently.rawValue
+            Int(NSImageScaling.scaleAxesIndependently.rawValue)
         )
         XCTAssertEqual(WallpaperController.fillOptions[.allowClipping] as? Bool, true)
         XCTAssertNotNil(WallpaperController.fillOptions[.fillColor] as? NSColor)

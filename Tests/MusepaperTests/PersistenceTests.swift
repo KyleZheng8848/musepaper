@@ -199,7 +199,7 @@ final class PersistenceTests: XCTestCase {
         let store = JSONStore(fileURL: url)
         var snapshot = AppSnapshot()
         snapshot.playlists = [
-            WallpaperPlaylist(name: "工作", applyToDesktop: false, applyToScreensaver: true, priority: 8)
+            WallpaperPlaylist(name: "工作", priority: 8, applyToDesktop: false, applyToScreensaver: true)
         ]
         try await store.save(snapshot)
         let loaded = try await store.load()
