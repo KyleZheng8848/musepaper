@@ -9,19 +9,13 @@
 
 **[GitHub repository](https://github.com/KyleZheng8848/musepaper)** · **[Releases](https://github.com/KyleZheng8848/musepaper/releases)** · **[Download latest](https://github.com/KyleZheng8848/musepaper/releases/latest)**
 
-The studio logo is also shown in **Musepaper → About Musepaper** (`关于 Musepaper`) and the About section of Settings (`设置`).
-
 **[English](README.md)** | [简体中文](README.zh-CN.md)
 
-The app and documentation support English and Simplified Chinese. Choose Follow System, 简体中文 or English in Settings → Language; prompts and saved content retain their original text.
-
-Musepaper is a native macOS AI wallpaper app. Create recurring generation tasks, let a Prompt Agent explore a theme or refine your prompt, and generate batches of images. AI tags and smart collections organize the results, while wallpaper playlists rotate them on your desktop.
-
-The app includes an offline Demo Renderer and supports the OpenAI Image API and compatible providers. The default image model is `gpt-image-2`; available models depend on your provider account. API keys are stored in a separate local credentials file with `0600` permissions, outside regular app settings and Git. This file stores keys in plain text: keep it private.
+**Turn a theme into a desktop that keeps changing.** Musepaper is a native macOS AI wallpaper app: generate a set of candidates, organize them with AI tags and smart collections, then rotate your favorites as wallpapers. Save a theme as a recurring task to keep exploring it.
 
 ![Musepaper's real artwork preview interface](assets/screenshots/ui-main.png)
 
-Historical real-app screenshot (window version **0.5.61**). The current download is **0.5.63**, with English/Chinese switching. This shows artwork browsing and tags, not verification of every current interaction. [Screenshot and demo notes](docs/MEDIA.md)
+Real artwork viewer, captured in **0.5.61**. The current download is **0.5.63**, with immediate English/Chinese switching. [Screenshot and demo notes](docs/MEDIA.md)
 
 ## Features
 

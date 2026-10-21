@@ -9,19 +9,13 @@
 
 **[GitHub 仓库](https://github.com/KyleZheng8848/musepaper)** · **[Releases](https://github.com/KyleZheng8848/musepaper/releases)** · **[下载最新版](https://github.com/KyleZheng8848/musepaper/releases/latest)**
 
-应用菜单中的 **Musepaper → 关于 Musepaper** 与 **设置 → 关于 Musepaper** 均展示工作室标识和开源主页链接。
-
 [English](README.md) | **[简体中文](README.zh-CN.md)**
 
-文档提供英文与简体中文版本。应用界面目前主要使用简体中文。
-
-Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“生成任务”，Agent 围绕主题探索或加强 Prompt，图片模型按批次产出候选；每张作品会获得多个 AI 标签，再由智能作品集筛选并交给轮播自动更换桌面。
-
-应用内置离线 Demo Renderer，也已接入 OpenAI Image API 与 OpenAI-compatible Provider。默认真实模型为 `gpt-image-2`，实际可用模型以你的服务商账户为准。API Key 保存在独立本机凭据文件中，不进入普通配置或 Git；文件权限固定为仅当前用户可读写的 `0600`。该文件为明文，请勿分享或提交。
+**让一个主题，持续变成你的桌面。** Musepaper 是原生 macOS AI 壁纸应用：围绕主题生成一批候选，用 AI 标签和智能合集整理，再让喜欢的作品自动轮播。想持续探索同一个世界，可以把主题保存为定时生成任务。
 
 ![Musepaper 真实作品预览界面](assets/screenshots/ui-main.png)
 
-真实历史截图（窗口显示 **0.5.61**）；当前下载版本为 **0.5.63**，已加入中英文切换。截图展示作品查看与标签，不用于证明当前版本所有交互已验收。[界面与演示说明](docs/MEDIA.md)
+真实作品查看界面，截图版本 **0.5.61**；当前下载为 **0.5.63**，支持中英文即时切换。[界面与演示说明](docs/MEDIA.md)
 
 ## 功能
 
