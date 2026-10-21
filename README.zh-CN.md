@@ -19,30 +19,18 @@ Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“
 
 应用内置离线 Demo Renderer，也已接入 OpenAI Image API 与 OpenAI-compatible Provider。默认真实模型为 `gpt-image-2`，实际可用模型以你的服务商账户为准。API Key 保存在独立本机凭据文件中，不进入普通配置或 Git；文件权限固定为仅当前用户可读写的 `0600`。该文件为明文，请勿分享或提交。
 
+![Musepaper 真实作品预览界面](assets/screenshots/ui-main.png)
+
+真实历史截图（窗口显示 **0.5.61**）；当前下载版本为 **0.5.63**，已加入中英文切换。截图展示作品查看与标签，不用于证明当前版本所有交互已验收。[界面与演示说明](docs/MEDIA.md)
+
 ## 功能
 
-- 临时创作 / 长期生成任务双模式
-- 任务可选择“主题探索 / 加强原 Prompt / 探索并加强”，分别控制同内核变化与忠实改写
-- 每个任务独立配置生成计划与每批候选数
-- 原生 macOS Musepaper 图标：深夜画布、纸张波浪与琥珀色生成火花
-- Agent / 大模型 API 负责主题拓展、Prompt 加强和作品多标签；文生图 API 只负责图片生成
-- 每张作品保留来源任务、生成 Prompt、收藏状态和多个语义标签
-- 智能作品集按任务、包含标签、排除标签和收藏状态动态筛选，不复制图片
-- 壁纸轮播可选择全部作品、某个任务或智能作品集作为来源，支持随机/最新/最早顺序
-- 离线 Demo Provider 与可插拔真实文生图 Provider
-- 多模型配置：OpenAI、OpenAI-compatible、自定义 Base URL
-- 独立 Prompt Agent：OpenAI Responses、OpenAI-compatible Chat、Anthropic Messages
-- Agent 可复用图片 Provider AK，也可使用独立凭据
-- GPT Image 2 文生图；参考图片自动切换到 Image Edits API
-- 本机 API Key 配置、连接测试和删除；代码不依赖 macOS Keychain
-- 批次大小可配置；Provider 一次只返回 1 张时自动补齐，并保留部分成功结果
-- 批次内明确选择、历史按批次展示；未选中时禁止应用
-- 生成状态机、失败提示和本地历史
-- 读取主屏幕尺寸，多屏一键替换
-- 覆盖屏幕的满幅应用策略，不用系统填充色补上下/左右边缘
-- 替换前记录旧壁纸并支持恢复
-- 每日任务使用日期种子扩展天气、时段和视角，锁定主题内核；结果自动进入作品库
-- 图片优先的作品画廊、AI 标签筛选、智能作品集与独立轮播页
+- 一次性出图、批量候选与定时生成任务。
+- Prompt Agent 探索主题、优化提示词并辅助打标签。
+- 收藏、AI 标签与智能合集，作品保留来源和生成参数。
+- 从作品、任务或合集生成壁纸轮播，支持多显示器适配。
+- 离线 Demo、OpenAI 及兼容图片服务，独立配置图片与文字模型。
+- 原生 macOS 应用，中英文随系统并可手动切换。
 
 ## Releases · 下载 macOS 应用
 
@@ -52,6 +40,10 @@ Musepaper 是一款原生 macOS AI 壁纸系统。用户创建长期运行的“
 - [Intel 芯片 — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)
 
 Release 页面同时提供 ZIP 和 `SHA256SUMS.txt` 校验文件。应用采用临时签名，尚未经过 Apple 公证。打开 DMG 后，运行其中的「安装并打开.command」完成安装与启动。
+
+## 先试一次，不花模型额度
+
+打开应用的生成页，未配置图片模型时点击**先用演示出图**，体验生成、比较候选和保存作品；Demo 不是 AI 图片质量样例。准备好后再在设置中填入自己的图片模型 Key。壁纸应用会改变桌面，请在确认选择后操作。
 
 ## 要求
 
@@ -186,3 +178,13 @@ Provider 仿真使用模拟网络，不产生模型费用；验证本机凭据�
 本次将 0.5.62 的动效与模型更新，合并进支持中英文选择和 SofunAI 出品标识的版本：新增闭环随机游走、持续缓动、LLaDA/Qwen 提示词与尺寸适配，以及一轮内不重复的持久化洗牌播放。保留已有作品库、语言偏好及 SofunAI 关于入口。
 
 额外验证：`./scripts/run-integration-smoke.sh`、`./scripts/run-localization-smoke.sh`、`python3 scripts/test_gen_download_page.py`。
+
+## 工具致谢
+
+[Codex](https://developers.openai.com/codex/) 协助开源整理、文档与验证；实际贡献者以 Git 历史为准。欢迎按 [贡献指南](CONTRIBUTING.md) 提交问题或改进；如果它帮到了你，欢迎点 Star。
+
+## 更多 SofunAI 开源作品
+
+- [FreeAll](https://github.com/KyleZheng8848/freeall) — 本机 API 账号池与网关
+- [CPET](https://github.com/KyleZheng8848/cpet) — 编程 Agent 桌宠与工作台
+- [音悦台 / Yinyuetai](https://github.com/KyleZheng8848/yinyuetai) — 本地优先音乐工作台

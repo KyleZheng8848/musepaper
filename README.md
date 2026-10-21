@@ -13,36 +13,24 @@ The studio logo is also shown in **Musepaper → About Musepaper** (`关于 Muse
 
 **[English](README.md)** | [简体中文](README.zh-CN.md)
 
-Documentation is available in English and Simplified Chinese. The app interface is currently primarily in Simplified Chinese; the setup instructions below include the Chinese control names for reference.
+The app and documentation support English and Simplified Chinese. Choose Follow System, 简体中文 or English in Settings → Language; prompts and saved content retain their original text.
 
 Musepaper is a native macOS AI wallpaper app. Create recurring generation tasks, let a Prompt Agent explore a theme or refine your prompt, and generate batches of images. AI tags and smart collections organize the results, while wallpaper playlists rotate them on your desktop.
 
 The app includes an offline Demo Renderer and supports the OpenAI Image API and compatible providers. The default image model is `gpt-image-2`; available models depend on your provider account. API keys are stored in a separate local credentials file with `0600` permissions, outside regular app settings and Git. This file stores keys in plain text: keep it private.
 
+![Musepaper's real artwork preview interface](assets/screenshots/ui-main.png)
+
+Historical real-app screenshot (window version **0.5.61**). The current download is **0.5.63**, with English/Chinese switching. This shows artwork browsing and tags, not verification of every current interaction. [Screenshot and demo notes](docs/MEDIA.md)
+
 ## Features
 
-- One-off creation and recurring generation tasks
-- Three prompt strategies: explore a theme, refine the original prompt, or combine both
-- Per-task generation schedules and configurable batch sizes
-- Native macOS icon featuring a night canvas, paper waves, and an amber spark
-- A separate text-model API for theme exploration, prompt refinement, and artwork tagging; the image API handles image generation
-- Artwork records with their source task, generation prompt, favorites, and semantic tags
-- Smart collections filtered by task, included or excluded tags, and favorites, without duplicating image files
-- Wallpaper playlists sourced from all artwork, a task, or a smart collection, with shuffle, newest-first, and oldest-first ordering
-- An offline Demo Provider and pluggable image providers
-- Multiple model configurations with OpenAI, OpenAI-compatible services, and custom base URLs
-- An independent Prompt Agent supporting OpenAI Responses, OpenAI-compatible Chat, and Anthropic Messages
-- Shared or separate API keys for the image provider and Prompt Agent
-- GPT Image 2 generation, with reference images automatically routed to the Image Edits API
-- Local API key management, connection testing, and deletion, without macOS Keychain dependencies
-- Configurable batches, automatic completion when a provider returns one image per request, and preservation of partial results
-- Explicit candidate selection and batch history; applying a wallpaper requires a selection
-- Generation state tracking, error messages, and local history
-- Display resolution detection and wallpaper application across multiple displays
-- Full-bleed wallpapers without system fill bands at the edges
-- Previous wallpaper tracking and restoration
-- Date-seeded variations in weather, time of day, and viewpoint for daily tasks, with generated images added to the library
-- An image-focused gallery, AI tag filters, smart collections, and a dedicated playlist page
+- One-off creation, batch candidates and recurring generation tasks.
+- A Prompt Agent for theme exploration, prompt refinement and tagging.
+- Favorites, AI tags and smart collections with source prompts and task metadata.
+- Wallpaper playlists from artwork, tasks or collections, with multiple-display adaptation.
+- Offline Demo, OpenAI and compatible image services, with separate image/text model settings.
+- Native macOS app with system-following or manual English/Chinese selection.
 
 ## Releases · Download the macOS app
 
@@ -52,6 +40,10 @@ The app includes an offline Demo Renderer and supports the OpenAI Image API and 
 - [Intel — DMG](https://github.com/KyleZheng8848/musepaper/releases/download/v0.5.63/Musepaper-0.5.63-x64.dmg)
 
 ZIP alternatives and `SHA256SUMS.txt` are available on the release page. The apps use ad hoc signing and are not notarized by Apple. Open the DMG and run `安装并打开.command` to install and launch.
+
+## Try it without model credits
+
+Open the creation page and select **Try Demo** when no image model is configured. Explore generation, candidate comparison and saving before adding your own image API key in Settings. The Demo is a workflow preview, not an AI image quality sample. Applying a wallpaper changes your desktop; use it after selecting a result.
 
 ## Requirements
 
@@ -188,3 +180,13 @@ Run `./scripts/run-localization-smoke.sh` to verify language selection, fallback
 This release combines the 0.5.62 motion and model updates with Chinese/English selection and SofunAI branding. It adds a closed-loop random wander effect, continuous ambient motion, image-model-specific LLaDA/Qwen prompts and sizes, and persistent shuffle playback without repeats within a cycle. Existing libraries and saved preferences remain compatible.
 
 Additional checks: `./scripts/run-integration-smoke.sh`, `./scripts/run-localization-smoke.sh`, and `python3 scripts/test_gen_download_page.py`.
+
+## Tooling acknowledgments
+
+[Codex](https://developers.openai.com/codex/) assisted with open-source preparation, documentation and verification. Actual contributors are recorded in Git history. Use [CONTRIBUTING.md](CONTRIBUTING.md) to report or improve the app; a star helps others find it if it helps you.
+
+## More from SofunAI Studio
+
+- [FreeAll](https://github.com/KyleZheng8848/freeall) — Local API gateway
+- [CPET](https://github.com/KyleZheng8848/cpet) — Coding-agent desktop companion
+- [音悦台 / Yinyuetai](https://github.com/KyleZheng8848/yinyuetai) — Local-first music workspace
